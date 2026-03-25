@@ -1,0 +1,12 @@
+{
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "redis": "^5.11.0",
+    "ws": "^8.20.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "*"
+  }
+}
