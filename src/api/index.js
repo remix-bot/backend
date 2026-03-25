@@ -4,6 +4,7 @@ import { createServer } from "http";
 import { createServerHttps } from "https";
 import * as fs from "node:fs";
 import { SocketHandler } from "../ws/SocketHandler";
+import { RedisManager } from "../remix/RedisHandler";
 
 export class APIServer {
   /**
@@ -49,6 +50,9 @@ export class APIServer {
       }
     });
 
-    this.sockets = new SocketHandler(this.server, this.ses);
+    this.redis = new RedisManager(config);
+
+    this.sockets = new SocketHandler(this.server, this.ses, this.redis);
   }
+
 }

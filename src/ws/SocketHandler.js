@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import { createServer, Server } from "http";
 import { Server as HTTPSServer } from "https";
 import { WebSocketServer } from "ws";
+import { RedisManager } from "../remix/RedisHandler";
 
 export class SocketHandler {
   server;
@@ -14,11 +15,13 @@ export class SocketHandler {
   /**
    * @param {Server|HTTPSServer} server
    * @param {RequestHandler} sessionParser
+   * @param {RedisManager} redis;
    */
-  constructor(server, sessionParser) {
+  constructor(server, sessionParser, redis) {
     this.server = server;
     this.ws = new WebSocketServer({ noServer: true });
     this.sessionParser = sessionParser;
+    this.redis = redis;
 
     this.setupEvents();
   }
@@ -48,10 +51,22 @@ export class SocketHandler {
   }
   /**
    * @param {WebSocket} s
+   * @param {Request} request
    */
   handleConnection(s, request) {
+    const path = request.url.split("/")[request.url.length - 1];
+
+    var handler;
+    switch (path) {
+      case "stoat":
+        handler = this.redis.stoat;
+        break;
+      default:
+        s.close(3003, "invalid path");
+        return;
+    }
     const id = request.session.userId;
-    const socket = new Socket(s, id);
+    const socket = new Socket(s, id, handler);
 
     this.sockets.set(id, socket);
     socket.on("close", () => {
@@ -64,12 +79,14 @@ export class Socket extends EventEmitter {
   /**
    * @param {WebSocket} socket
    * @param {string} userId
+   * @param {RedisHandler} redis
    */
-  constructor(socket, userId) {
+  constructor(socket, userId, redis) {
     super();
 
     this.socket = socket;
     this.userId = userId;
+    this.redis = redis;
 
     this.setupEvents();
   }
