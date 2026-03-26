@@ -1,6 +1,6 @@
 import EventEmitter from "events";
 import { createClient } from "redis";
-import { PlayerManager } from "./PlayerManager";
+import { PlayerManager } from "./PlayerManager.js";
 
 /**
  * Interface to the Stoat and Fluxer servers.

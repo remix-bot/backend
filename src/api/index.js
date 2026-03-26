@@ -1,11 +1,11 @@
 import session from "express-session";
-import express, { Router } from "express";
+import express, { json, Router } from "express";
 import { createServer } from "http";
-import { createServerHttps } from "https";
+import { createServer as createServerHttps } from "https";
 import * as fs from "node:fs";
-import { SocketHandler } from "../ws/SocketHandler";
-import { RedisManager } from "../remix/RedisHandler";
-import { DatabaseManager } from "../db/DatabaseManager";
+import { SocketHandler } from "../ws/SocketHandler.js";
+import { RedisManager } from "../remix/RedisHandler.js";
+import { DatabaseManager } from "../db/DatabaseManager.js";
 
 export class APIServer {
   /**
@@ -18,6 +18,8 @@ export class APIServer {
    * @param {string} [config.ssl.private] Path to the private key file
    * @param {string} [config.ssl.cert] Path to the cert file
    * @param {number} [config.ssl.httpPort] Port the http port will listen on to redirect to https
+   *
+   * @param {PoolOptions} config.mysql
    */
   constructor(config) {
     this.app = express();
@@ -51,18 +53,34 @@ export class APIServer {
       }
     });
     this.app.use(this.ses);
+    this.app.use(json());
 
     this.redis = new RedisManager(config);
     this.db = new DatabaseManager(config.mysql);
 
     this.sockets = new SocketHandler(this.server, this.redis, this.db);
 
-    this.setupSecure();
     this.setupPublic();
+    this.setupSecure();
+  }
+
+  /**
+   * @param {string} d
+   * @returns {Promise<string>}
+   */
+  async getUserId(d) {
+    if (!d) return;
+    if (d.length !== 26) return null; // too short
+    if (!d.match(/[0-9A-Z]{26}/g)) return null;
+    // TODO: fetch users from remix and cache them
+    return d;
   }
 
   setupPublic() {
     this.app.post("/login", async (req, res) => {
+      if (!req.body) {
+        return res.status(400).send({ message: "Invalid body" });
+      }
       const user = await this.getUserId(req.body.user);
       if (!user) {
         return res.status(400).send({ message: "Invalid user data" });
@@ -75,7 +93,7 @@ export class APIServer {
     });
     this.app.post("/login/verify", async (req, res) => {
       const v = await this.verifySession(req);
-      if (!v) res.send({ verified: false });
+      if (!v) return res.send({ verified: false });
       const apiToken = await this.db.generateAPIToken(req.session.user);
       res.send({ verified: true, token: apiToken });
     });
@@ -87,8 +105,8 @@ export class APIServer {
   async verifySession(req) {
     if (req.session.verified) return true;
     if (!req.session.code || !req.session.user) {
-      const token = req.headers.get("token");
-      const id = req.headers.get("tokenId");
+      const token = req.headers.token;
+      const id = req.headers.tokenId;
       if (!token || !id) return false;
       const data = await this.db.verifyAPIToken(token, id);
       if (!data.valid) return false;

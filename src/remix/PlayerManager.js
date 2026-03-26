@@ -1,4 +1,4 @@
-import { RedisHandler, RedisManager } from "./RedisHandler";
+import { RedisHandler, RedisManager } from "./RedisHandler.js";
 
 export class PlayerManager {
   /**

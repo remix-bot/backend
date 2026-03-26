@@ -2,8 +2,8 @@ import EventEmitter from "events";
 import { createServer, Server } from "http";
 import { Server as HTTPSServer } from "https";
 import { WebSocketServer } from "ws";
-import { RedisManager } from "../remix/RedisHandler";
-import { DatabaseManager } from "../db/DatabaseManager";
+import { RedisManager } from "../remix/RedisHandler.js";
+import { DatabaseManager } from "../db/DatabaseManager.js";
 
 export class SocketHandler {
   server;
@@ -26,7 +26,7 @@ export class SocketHandler {
   }
 
   setupEvents() {
-    this.ws.on("connection", handleConnection.bind(this));
+    this.ws.on("connection", this.handleConnection.bind(this));
   }
   /**
    * @param {WebSocket} s

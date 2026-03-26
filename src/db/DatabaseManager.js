@@ -1,6 +1,8 @@
 import { compare, genSalt, hash } from "bcryptjs";
-import { createPool, PoolOptions, QueryResult, FieldPacket } from "mysql2/promise";
-import { Utils } from "../Utils";
+import { createPool } from "mysql2/promise";
+import mysql2 from "mysql2/promise";
+const { FieldPacket, PoolOptions, QueryResult } = mysql2;
+import { Utils } from "../Utils.js";
 
 export class DatabaseManager {
   /**
