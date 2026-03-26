@@ -1,5 +1,6 @@
 import EventEmitter from "events";
 import { createClient } from "redis";
+import { PlayerManager } from "./PlayerManager";
 
 /**
  * Interface to the Stoat and Fluxer servers.
@@ -117,5 +118,8 @@ export class Stoat {
    */
   constructor(redis) {
     this.redis = redis;
+    this.players = new PlayerManager(redis);
   }
+
+
 }
