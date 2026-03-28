@@ -33,7 +33,7 @@ export class SocketHandler {
    * @param {Request} request
    */
   handleConnection(s, request) {
-    const path = request.url.split("/")[request.url.length - 1];
+    const path = request.url.split("/")[request.url.split("/").length - 1];
 
     var handler;
     switch (path) {
@@ -44,7 +44,7 @@ export class SocketHandler {
         s.close(3003, "invalid path");
         return;
     }
-    const socket = new Socket(s, handler, this.db);
+    const socket = new Socket(s, this.redis, this.db);
     socket.once("authenticated", (id) => {
       this.sockets.set(id, socket);
       socket.once("close", () => {
@@ -87,14 +87,17 @@ export class Socket extends EventEmitter {
     this.socket.on("close", () => {
       this.emit("close");
     });
-    this.socket.on("message", this.processMessage.bind(this));
+    this.socket.on("message", (m) => {
+      this.processMessage(m.toString());
+    });
 
     this.on("authenticated", this.onInit.bind(this));
   }
   onInit() {
-    this.redis.handler.subscribe(this.id, (m) => {
+    this.redis.handler.subscribe(this.user, (m) => {
       console.log("Message for user: ", m);
     });
+    this.socket.send(JSON.stringify({ op: OP[0], data: { userId: this.user } }));
   }
   delayClose() {
     clearTimeout(this.closeTimeout);
@@ -115,7 +118,7 @@ export class Socket extends EventEmitter {
     }
     const op = payload.op;
     const data = payload.data;
-    if (!op || !data) return;
+    if (!op || !data) return console.log("[Socket] Malformed message: ", op, data);
 
     switch (op) {
       case "AUTH":
@@ -135,6 +138,7 @@ export class Socket extends EventEmitter {
         this.delayClose();
 
         this.user = res.user;
+        this.authenticated = true;
         this.emit("authenticated", res.user)
         break;
       case "MSG":

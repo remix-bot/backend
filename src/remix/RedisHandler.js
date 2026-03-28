@@ -31,7 +31,15 @@ export class RedisHandler extends EventEmitter {
   constructor(opts) {
     super();
 
-    this.client = createClient(opts.redis);
+    this.client = createClient({
+      RESP: 3,
+      clientSideCache: {
+        ttl: 60 * 60 * 1000, // 1 hour
+        maxEntries: 0, // unlimited, for now
+        evictPolicy: "LRU"
+      },
+      ...opts.redis
+    });
     this.client.on("error", (err) => {
       console.log("[Redis/Main] Error: ", err);
     });
@@ -86,18 +94,30 @@ export class RedisHandler extends EventEmitter {
   subscribe(channel, listener) {
     return this.subscriber.subscribe(channel, listener);
   }
+  /**
+   *
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  unsubscribe(channel, listener) {
+    return this.subscriber.unsubscribe(channel, listener);
+  }
 
   /**
-   * @param {string|Object} data
-   * @returns {Promise<string>}
+   * @template T
+   * @param {T} data
+   * @param {string} platform Identifier of the client that should reply
+   * @returns {Promise<T>}
    */
-  async request(data) {
-    const content = (typeof data === "string") ? data : JSON.stringify(data);
+  async request(data, platform) {
+    const content = data;
     return new Promise(async res => {
-      const id = this.id++;
+      const id = this.currId++;
       const payload = {
         id,
-        content
+        content,
+        platform,
       }
       const subscriber = async (m) => {
         const d = JSON.parse(m);
@@ -110,6 +130,31 @@ export class RedisHandler extends EventEmitter {
       await this.client.publish("request", JSON.stringify(payload));
     });
   }
+  /**
+   *
+   * @param {Object} data
+   * @param {("fluxer"|"stoat")} data.platform
+   * @param {string} data.key
+   * @param {string} data.type
+   * @returns {Promise<Object>}
+   */
+  async get(data) {
+    const key = data.platform + "_" + data.type + "_" + data.key;
+    try {
+      const data = JSON.parse(await this.client.get(key));
+      if (data) return data;
+    } catch (e) { }
+    const d = await this.request({ type: data.type, key: data.key }, data.platform);
+    if (d) {
+      await this.client.set(key, JSON.stringify(d), {
+        expiration: {
+          type: "EX",
+          value: 5 * 60, // 5 minutes
+        },
+      });
+    }
+    return d;
+  }
 }
 
 export class Stoat {
@@ -118,8 +163,14 @@ export class Stoat {
    */
   constructor(redis) {
     this.redis = redis;
-    this.players = new PlayerManager(redis);
+    this.players = new PlayerManager(redis, "stoat");
   }
-
-
+  /**
+   * @param {string} type
+   * @param {string} key
+   * @returns {Promise<Object>}
+   */
+  get(type, key) {
+    return this.redis.get({ platform: "stoat", key: key, type: type });
+  }
 }

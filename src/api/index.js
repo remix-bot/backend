@@ -1,5 +1,6 @@
 import session from "express-session";
 import express, { json, Router } from "express";
+import cors from "cors";
 import { createServer } from "http";
 import { createServer as createServerHttps } from "https";
 import * as fs from "node:fs";
@@ -54,6 +55,7 @@ export class APIServer {
     });
     this.app.use(this.ses);
     this.app.use(json());
+    this.app.use(cors());
 
     this.redis = new RedisManager(config);
     this.db = new DatabaseManager(config.mysql);
@@ -106,7 +108,7 @@ export class APIServer {
     if (req.session.verified) return true;
     if (!req.session.code || !req.session.user) {
       const token = req.headers.token;
-      const id = req.headers.tokenId;
+      const id = req.headers.tokenid;
       if (!token || !id) return false;
       const data = await this.db.verifyAPIToken(token, id);
       if (!data.valid) return false;
@@ -121,7 +123,7 @@ export class APIServer {
   setupSecure() {
     this.secured = new Router();
     this.secured.use(/** @param {Request} req @param {Response} res */async (req, res, next) => {
-      if (!(await this.verifySession(req))) return res.status(403).send("Unauthorized.");
+      if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized." });
       req.data = {
         id: req.session.user
       };
@@ -129,5 +131,10 @@ export class APIServer {
       next();
     });
     this.app.use(this.secured);
+
+    this.secured.get("/info", async (req, res) => {
+      res.status(200).send({
+        user: await this.redis.stoat.get("user", req.data.id) });
+    });
   }
 }
