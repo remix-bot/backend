@@ -55,7 +55,23 @@ export class APIServer {
     });
     this.app.use(this.ses);
     this.app.use(json());
-    this.app.use(cors());
+    /*const dynamicCors = (req, callback) => {
+      console.log(req.headers.origin === config.frontendOrigin, config.frontendOrigin, req.headers.origin);
+      if (req.headers.origin === config.frontendOrigin) {
+        return callback(null, {
+          origin: config.frontendOrigin,
+          preflightContinue: true,
+          credenials: true
+        });
+      }
+      return callback(null, { origin: "*" });
+    }
+    this.app.use(cors(dynamicCors));*/
+    this.app.use(cors({
+      origin: config.frontendOrigin,
+      credentials: true
+    }));
+    //this.app.use(cors());
 
     this.redis = new RedisManager(config);
     this.db = new DatabaseManager(config.mysql);
@@ -84,6 +100,7 @@ export class APIServer {
         return res.status(400).send({ message: "Invalid body" });
       }
       const user = await this.getUserId(req.body.user);
+      if (req.session.code && user === req.session.user) return res.status(200).send({ code: req.session.code, user });
       if (!user) {
         return res.status(400).send({ message: "Invalid user data" });
       }
@@ -91,7 +108,7 @@ export class APIServer {
       req.session.user = user;
       req.session.code = token;
       req.session.verified = false;
-      res.status(200).send(JSON.stringify({ code: token }));
+      res.status(200).send({ code: token, user });
     });
     this.app.post("/login/verify", async (req, res) => {
       const v = await this.verifySession(req);
@@ -125,7 +142,7 @@ export class APIServer {
     this.secured.use(/** @param {Request} req @param {Response} res */async (req, res, next) => {
       if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized." });
       req.data = {
-        id: req.session.user
+        user: await this.redis.stoat.get("user", req.session.user)
       };
 
       next();
@@ -134,7 +151,8 @@ export class APIServer {
 
     this.secured.get("/info", async (req, res) => {
       res.status(200).send({
-        user: await this.redis.stoat.get("user", req.data.id) });
+        user: req.data.user
+      });
     });
   }
 }
