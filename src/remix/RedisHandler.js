@@ -165,6 +165,9 @@ export class Stoat {
     this.redis = redis;
     this.players = new PlayerManager(redis, "stoat");
   }
+  get channelPrefix() {
+    return "stoat_";
+  }
   /**
    * @param {string} type
    * @param {string} key
@@ -172,5 +175,22 @@ export class Stoat {
    */
   get(type, key) {
     return this.redis.get({ platform: "stoat", key: key, type: type });
+  }
+  /**
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  subscribe(channel, listener) {
+    return this.redis.subscribe(channel, listener);
+  }
+  /**
+   *
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  unsubscribe(channel, listener) {
+    return this.redis.unsubscribe(channel, listener);
   }
 }

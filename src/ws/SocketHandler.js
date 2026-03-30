@@ -97,6 +97,8 @@ export class Socket extends EventEmitter {
     this.redis.handler.subscribe(this.user, (m) => {
       console.log("Message for user: ", m);
     });
+
+    //this.handler.socket
     this.socket.send(JSON.stringify({ op: OP[0], data: { userId: this.user } }));
   }
   delayClose() {
