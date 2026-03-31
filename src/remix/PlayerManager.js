@@ -162,6 +162,8 @@ export class Player extends EventEmitter {
   channel;
   /** @type {Queue} */
   queue;
+  /** @type {Object[]} */
+  users;
   /**
    * @param {string} channel
    * @param {RedisHandler} subscriber
@@ -209,6 +211,14 @@ export class Player extends EventEmitter {
         case "queue":
           this.queue.update(data);
           break;
+        case "join":
+          this.users.push(data);
+          break;
+        case "leave":
+          const idx = this.users.findIndex(u => u.id === data.id);
+          if (idx === -1) break;
+          this.users.splice(idx, 1);
+          break;
       }
     }
     this.redis.subscribe(this.redisChannel, listener);
@@ -232,6 +242,7 @@ export class Player extends EventEmitter {
     };
     this.queue = new Queue();
     this.queue.deserialise(redisData.queue);
+    this.users = this.channel.voiceParticipants;
   }
 
   close() {

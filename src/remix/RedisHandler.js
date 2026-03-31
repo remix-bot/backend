@@ -164,6 +164,7 @@ export class Stoat {
   constructor(redis) {
     this.redis = redis;
     this.players = new PlayerManager(redis, "stoat");
+    this.users = new UserManager(this);
   }
   get channelPrefix() {
     return "stoat_";

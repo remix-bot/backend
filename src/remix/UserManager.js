@@ -11,6 +11,8 @@ export class User extends EventEmitter {
 
     this.id = id;
     this.manager = manager;
+    /** @type {string[]} */
+    this.connectedTo = [];
 
     this.subscribe();
   }
@@ -28,6 +30,14 @@ export class User extends EventEmitter {
     const event = m.type;
 
     switch (event) {
+      case "join":
+        this.connectedTo.push(m.data);
+        break;
+      case "leave":
+        const idx = this.connectedTo.findIndex(e => e === m.data);
+        if (idx === -1) break;
+        this.connectedTo.splice(idx, 1);
+        break;
       default:
         console.log(m);
     }
