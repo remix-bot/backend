@@ -98,6 +98,16 @@ export class Queue {
     this.data = data.data;
   }
   /**
+   *
+   * @returns
+   */
+  serialise() {
+    return {
+      current: this.current,
+      data: this.data,
+    }
+  }
+  /**
    * Invoked by startPlay
    * @param {SerialisedVideo} vid
    */
@@ -243,6 +253,18 @@ export class Player extends EventEmitter {
     this.queue = new Queue();
     this.queue.deserialise(redisData.queue);
     this.users = this.channel.voiceParticipants;
+  }
+  /**
+   * @returns {SerialisedPlayer}
+   */
+  serialise() {
+    return {
+      loop: this.loop,
+      paused: this.paused,
+      volume: this.volume,
+      channel: this.channel,
+      queue: this.queue.serialise(),
+    }
   }
 
   close() {

@@ -1,5 +1,5 @@
 import EventEmitter from "node:events";
-import { Stoat } from "./RedisHandler";
+import { Stoat } from "./RedisHandler.js";
 
 export class User extends EventEmitter {
   /**
@@ -19,7 +19,7 @@ export class User extends EventEmitter {
 
   subscribe() {
     const handler = (m) => {
-      this.handleUpdate(m)
+      this.handleUpdate(JSON.parse(m));
     }
     this.manager.subscribeUser(this.id, handler);
   }
@@ -32,11 +32,13 @@ export class User extends EventEmitter {
     switch (event) {
       case "join":
         this.connectedTo.push(m.data);
+        this.emit("join", m.data);
         break;
       case "leave":
         const idx = this.connectedTo.findIndex(e => e === m.data);
         if (idx === -1) break;
         this.connectedTo.splice(idx, 1);
+        this.emit("leave", m.data);
         break;
       default:
         console.log(m);

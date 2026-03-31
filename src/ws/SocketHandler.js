@@ -94,8 +94,29 @@ export class Socket extends EventEmitter {
     this.on("authenticated", this.onInit.bind(this));
   }
   onInit() {
-    this.redis.handler.subscribe(this.user, (m) => {
+    /*this.redis.handler.subscribe(this.user, (m) => {
       console.log("Message for user: ", m);
+    });*/
+    const user = this.redis.stoat.users.getUser(this.user);
+    user.on("join", (channel) => {
+      const player = this.redis.stoat.players.get(channel);
+      if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
+      this.socket.send(JSON.stringify({
+        op: OP[1],
+        data: {
+          type: "join",
+          data: player.serialise()
+        }
+      }));
+    });
+    user.on("leave", (channel) => {
+      this.socket.send(JSON.stringify({
+        op: OP[1],
+        data: {
+          type: "leave",
+          data: channel
+        }
+      }));
     });
 
     //this.handler.socket
