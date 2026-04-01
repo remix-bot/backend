@@ -32,7 +32,7 @@ export class APIServer {
       }, this.app);
 
       const httpServer = express();
-      httpServer.get("*", function (req, res) {
+      httpServer.get(/(.*)/, function (req, res) {
         res.redirect("https://" + req.headers.host + req.url);
       });
       httpServer.listen(config.ssl.httpPort);
