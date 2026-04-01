@@ -85,6 +85,7 @@ export class Socket extends EventEmitter {
 
   setupEvents() {
     this.socket.on("close", () => {
+      if (this.onClose) this.onClose();
       this.emit("close");
     });
     this.socket.on("message", (m) => {
@@ -98,7 +99,7 @@ export class Socket extends EventEmitter {
       console.log("Message for user: ", m);
     });*/
     const user = this.redis.stoat.users.getUser(this.user);
-    user.on("join", (channel) => {
+    const joinListener = (channel) => {
       const player = this.redis.stoat.players.get(channel);
       if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
       this.socket.send(JSON.stringify({
@@ -108,8 +109,8 @@ export class Socket extends EventEmitter {
           data: player.serialise()
         }
       }));
-    });
-    user.on("leave", (channel) => {
+    };
+    const leaveListener = (channel) => {
       this.socket.send(JSON.stringify({
         op: OP[1],
         data: {
@@ -117,7 +118,14 @@ export class Socket extends EventEmitter {
           data: channel
         }
       }));
-    });
+    };
+    user.on("join", joinListener);
+    user.on("leave", leaveListener);
+
+    this.onClose = () => {
+      user.off("join", joinListener);
+      user.off("leave", leaveListener);
+    }
 
     //this.handler.socket
     this.socket.send(JSON.stringify({ op: OP[0], data: { userId: this.user } }));

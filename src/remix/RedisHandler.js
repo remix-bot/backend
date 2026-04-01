@@ -159,16 +159,25 @@ export class RedisHandler extends EventEmitter {
 }
 
 export class Stoat {
+  /** @type {Object[]} */
+  commands;
+
   /**
    * @param {RedisHandler} redis
    */
   constructor(redis) {
     this.redis = redis;
-    this.players = new PlayerManager(redis, "stoat");
+    this.redis.on("ready", async () => {
+      this.commands = await this.get("commands", "*");
+    });
+    this.players = new PlayerManager(redis, this);
     this.users = new UserManager(this);
   }
   get channelPrefix() {
     return "stoat_";
+  }
+  get identifier() {
+    return "stoat";
   }
   /**
    * @param {string} type

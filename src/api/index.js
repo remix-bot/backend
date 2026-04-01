@@ -116,6 +116,9 @@ export class APIServer {
       const apiToken = await this.db.generateAPIToken(req.session.user);
       res.send({ verified: true, token: apiToken });
     });
+    this.app.get("/commands", (req, res) => {
+      res.send(this.redis.stoat.commands);
+    });
   }
   /**
    * @param {Request} req

@@ -1,5 +1,6 @@
 import EventEmitter from "node:events";
 import { Stoat } from "./RedisHandler.js";
+import { Player } from "./PlayerManager.js";
 
 export class User extends EventEmitter {
   /**
@@ -55,6 +56,21 @@ export class UserManager {
     this.platform = platform;
     /** @type {Map<string, User>} */
     this.cache = new Map();
+  }
+  /**
+   *
+   * @param {Object[]} users
+   * @param {Player} p
+   */
+  onPlayerInit(users, p) {
+    users.forEach(u => {
+      const user = this.cache.get(u.id);
+      if (!user) return;
+      user.handleUpdate({
+        type: "join",
+        data: p.channel.id
+      });
+    });
   }
   /**
    * @param {string} id

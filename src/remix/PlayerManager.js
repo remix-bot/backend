@@ -1,4 +1,4 @@
-import { RedisHandler, RedisManager } from "./RedisHandler.js";
+import { RedisHandler, RedisManager, Stoat } from "./RedisHandler.js";
 import EventEmitter from "node:events";
 
 export class PlayerManager {
@@ -6,7 +6,7 @@ export class PlayerManager {
   playerMap = new Map();
   /**
    * @param {RedisHandler} redis
-   * @param {string} platform
+   * @param {Stoat} platform
    */
   constructor(redis, platform) {
     this.redis = redis;
@@ -19,7 +19,7 @@ export class PlayerManager {
     /** @type {SerialisedPlayer[]} */
     const data = await this.redis.request({
       type: "fetchPlayers"
-    }, this.platform);
+    }, this.platform.identifier);
     data.forEach((p) => {
       const player = this.deserialisePlayer(p);
       this.playerMap.set(p.channel.id, player);
@@ -35,6 +35,7 @@ export class PlayerManager {
       if (type === "init") {
         const p = this.deserialisePlayer(player);
         this.playerMap.set(p.channel.id, p);
+        this.platform.users.onPlayerInit(p.channel.voiceParticipants, p);
         return;
       } else if (type === "close") {
         const id = player.channel.id;
@@ -42,7 +43,7 @@ export class PlayerManager {
         this.playerMap.delete(id);
       }
     }
-    await this.redis.subscribe(this.platform + "_players", managerEvent);
+    await this.redis.subscribe(this.platform.channelPrefix + "players", managerEvent);
   }
   /**
    * @param {string} id Channel id of the player
@@ -58,7 +59,7 @@ export class PlayerManager {
    */
   deserialisePlayer(p) {
     console.log("deserialisation", p.channel.id);
-    const player = new Player(this.platform + "_player_" + p.channel.id, this.redis);
+    const player = new Player(this.platform.channelPrefix + "player_" + p.channel.id, this.redis);
     player.deserialise(p);
     return player;
   }
