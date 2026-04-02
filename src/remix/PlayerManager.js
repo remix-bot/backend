@@ -39,6 +39,7 @@ export class PlayerManager {
         return;
       } else if (type === "close") {
         const id = player.channel.id;
+        this.platform.users.onPlayerClose(this.get(id).users, this.get(id));
         this.get(id).close();
         this.playerMap.delete(id);
       }

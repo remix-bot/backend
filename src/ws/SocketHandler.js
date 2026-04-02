@@ -94,12 +94,13 @@ export class Socket extends EventEmitter {
 
     this.on("authenticated", this.onInit.bind(this));
   }
-  onInit() {
+  async onInit() {
     /*this.redis.handler.subscribe(this.user, (m) => {
       console.log("Message for user: ", m);
     });*/
-    const user = this.redis.stoat.users.getUser(this.user);
+    const user = await this.redis.stoat.users.getOrFetchUser(this.user);
     const joinListener = (channel) => {
+      console.log("joining");
       const player = this.redis.stoat.players.get(channel);
       if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
       this.socket.send(JSON.stringify({
@@ -128,7 +129,7 @@ export class Socket extends EventEmitter {
     }
 
     //this.handler.socket
-    this.socket.send(JSON.stringify({ op: OP[0], data: { userId: this.user } }));
+    this.socket.send(JSON.stringify({ op: OP[0], data: { type: "auth", data: user.serialise() } }));
   }
   delayClose() {
     clearTimeout(this.closeTimeout);

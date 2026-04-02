@@ -3,6 +3,17 @@ import { Stoat } from "./RedisHandler.js";
 import { Player } from "./PlayerManager.js";
 
 export class User extends EventEmitter {
+  /** @type {string} */
+  id;
+  /** @type {string} */
+  discriminator;
+  /** @type {string} */
+  username;
+  /** @type {string} */
+  displayName;
+  /** @type {{url: string}} */
+  avatar;
+
   /**
    * @param {string} id
    * @param {UserManager} manager
@@ -29,6 +40,7 @@ export class User extends EventEmitter {
    */
   handleUpdate(m) {
     const event = m.type;
+    console.log(event);
 
     switch (event) {
       case "join":
@@ -44,6 +56,42 @@ export class User extends EventEmitter {
       default:
         console.log(m);
     }
+  }
+
+  serialise() {
+    return {
+      id: this.id,
+      discriminator: this.discriminator,
+      username: this.username,
+      displayName: this.displayName,
+      avatar: this.avatar,
+      connectedTo: this.connectedTo
+    }
+  }
+  /**
+   * @typedef APIUser
+   * @property {string} id
+   * @property {string} discriminator
+   * @property {string} username
+   * @property {string} displayName
+   * @property {Object} avatar
+   * @property {string} avatar.url
+   */
+  /**
+   * @param {APIUser} data
+   */
+  deserialise(data) {
+    this.id = data.id;
+    this.discriminator = data.discriminator;
+    this.username = data.username;
+    this.displayName = data.displayName;
+    this.avatar = data.avatar;
+  }
+  /**
+   * @override
+   */
+  toString() {
+    return this.serialise();
   }
 }
 
@@ -63,11 +111,22 @@ export class UserManager {
    * @param {Player} p
    */
   onPlayerInit(users, p) {
+    console.log(users);
     users.forEach(u => {
       const user = this.cache.get(u.id);
       if (!user) return;
       user.handleUpdate({
         type: "join",
+        data: p.channel.id
+      });
+    });
+  }
+  onPlayerClose(users, p) {
+    users.forEach(u => {
+      const user = this.cache.get(u.id);
+      if (!user) return;
+      user.handleUpdate({
+        type: "leave",
         data: p.channel.id
       });
     });
@@ -81,6 +140,12 @@ export class UserManager {
 
     const user = new User(id, this);
     this.cache.set(id, user);
+    return user;
+  }
+  async getOrFetchUser(id) {
+    const user = this.cache.get(id) || new User(id, this);
+    const data = await this.platform.get("user", id);
+    user.deserialise(data);
     return user;
   }
   /**

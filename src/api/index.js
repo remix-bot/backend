@@ -154,7 +154,7 @@ export class APIServer {
     this.secured.use(/** @param {Request} req @param {Response} res */async (req, res, next) => {
       if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized." });
       req.data = {
-        user: await this.redis.stoat.get("user", req.session.user)
+        user: await this.redis.stoat.users.getOrFetchUser(req.session.user)
       };
 
       next();
@@ -163,7 +163,7 @@ export class APIServer {
 
     this.secured.get("/info", async (req, res) => {
       res.status(200).send({
-        user: req.data.user
+        user: req.data.user.serialise()
       });
     });
   }
