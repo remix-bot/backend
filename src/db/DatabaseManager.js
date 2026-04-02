@@ -117,10 +117,13 @@ export class DatabaseManager {
   async verifyLoginCode(userId, code) {
     try {
       const res = await this.execute("SELECT * FROM login_codes WHERE user=?", [userId]);
-      if (res.length === 0) return false;
-      if (!res[0].verified) return false;
-      if (!this.compareHash(code, res[0].token)) return false;
-      return true;
+      //if (res.length === 0) return false;
+      for (let i = 0; i < res.length; i++) {
+        if (!res[i].verified) continue;
+        if (!this.compareHash(code, res[i].token)) continue;
+        return true;
+      }
+      return false;
     } catch (e) {
       console.llg("SELECT login:codes:", e);
       return false;
