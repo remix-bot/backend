@@ -7,6 +7,7 @@ import * as fs from "node:fs";
 import { SocketHandler } from "../ws/SocketHandler.js";
 import { RedisManager } from "../remix/RedisHandler.js";
 import { DatabaseManager } from "../db/DatabaseManager.js";
+import { RedisStore } from "connect-redis";
 
 export class APIServer {
   /**
@@ -45,7 +46,13 @@ export class APIServer {
       console.log("Listening on port " + this.port);
     });
 
+    this.redis = new RedisManager(config);
+    const redisStore = new RedisStore({
+      client: this.redis.handler.client,
+      prefix: "backend-session:"
+    });
     this.ses = session({
+      store: redisStore,
       saveUninitialized: false,
       secret: config.sessionSecret || "testsecret",
       resave: "false",
@@ -73,7 +80,6 @@ export class APIServer {
     }));
     //this.app.use(cors());
 
-    this.redis = new RedisManager(config);
     this.db = new DatabaseManager(config.mysql);
 
     this.sockets = new SocketHandler(this.server, this.redis, this.db);
@@ -110,6 +116,9 @@ export class APIServer {
       req.session.verified = false;
       res.status(200).send({ code: token, user });
     });
+    this.app.get("/login/code", (req, res) => {
+      return res.status(200).send({ code: req.session?.code });
+    })
     this.app.post("/login/verify", async (req, res) => {
       const v = await this.verifySession(req);
       if (!v) return res.send({ verified: false });

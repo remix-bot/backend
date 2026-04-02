@@ -140,7 +140,7 @@ export class RedisHandler extends EventEmitter {
    * @returns {Promise<Object>}
    */
   async get(data) {
-    const key = data.platform + "_" + data.type + "_" + data.key;
+    const key = data.platform + ":" + data.type + ":" + data.key;
     try {
       const data = JSON.parse(await this.client.get(key));
       if (data) return data;
@@ -174,7 +174,7 @@ export class Stoat {
     this.users = new UserManager(this);
   }
   get channelPrefix() {
-    return "stoat_";
+    return "stoat:";
   }
   get identifier() {
     return "stoat";
