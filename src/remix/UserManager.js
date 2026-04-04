@@ -146,6 +146,7 @@ export class UserManager {
     const user = this.cache.get(id) || new User(id, this);
     const data = await this.platform.get("user", id);
     user.deserialise(data);
+    this.cache.set(id, user);
     return user;
   }
   /**
