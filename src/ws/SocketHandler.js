@@ -129,7 +129,13 @@ export class Socket extends EventEmitter {
     }
 
     //this.handler.socket
-    this.socket.send(JSON.stringify({ op: OP[0], data: { type: "auth", data: user.serialise() } }));
+    this.socket.send(JSON.stringify({
+      op: OP[0],
+      data: {
+        type: "auth",
+        data: user.serialise()
+      }
+    }));
   }
   delayClose() {
     clearTimeout(this.closeTimeout);

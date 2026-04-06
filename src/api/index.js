@@ -166,5 +166,11 @@ export class APIServer {
         user: req.data.user.serialise()
       });
     });
+    this.secured.get("/player/:channel", async (req, res) => {
+      const player = this.redis.stoat.players.get(req.params.channel);
+      if (!player) return res.status(404).send({ error: "Player not found" });
+      if (!player.users.find(u => u.id === req.data.user.id)) return res.status(401).send({ error: "Unauthorized" });
+      res.status(200).send(player.serialise());
+    });
   }
 }

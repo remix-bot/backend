@@ -44,6 +44,7 @@ export class User extends EventEmitter {
 
     switch (event) {
       case "join":
+        if (this.connectedTo.includes(m.data)) break;
         this.connectedTo.push(m.data);
         this.emit("join", m.data);
         break;
