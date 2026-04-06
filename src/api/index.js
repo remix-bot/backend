@@ -172,5 +172,9 @@ export class APIServer {
       if (!player.users.find(u => u.id === req.data.user.id)) return res.status(401).send({ error: "Unauthorized" });
       res.status(200).send(player.serialise());
     });
+    this.secured.get("/servers", async (req, res) => {
+      const servers = await this.redis.stoat.get("sharedServers", req.data.user.id);
+      res.status(200).send(servers);
+    });
   }
 }
