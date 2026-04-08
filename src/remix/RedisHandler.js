@@ -22,6 +22,7 @@ export class RedisHandler extends EventEmitter {
   clientReady = false;
   subReady = false;
   connected = false;
+  connectionReady = false; // wether the bot is online and can respond
 
   currId = 0;
   /**
@@ -48,7 +49,7 @@ export class RedisHandler extends EventEmitter {
       console.log("[RedisMain] Connected");
       this.clientReady = true;
       if (this.subReady && !this.connected) {
-        this.emit("ready");
+        this.emit("redisReady");
         this.connected = true;
       }
     });
@@ -60,11 +61,25 @@ export class RedisHandler extends EventEmitter {
     this.subscriber.connect().then(async () => {
       console.log("[Redis/Subscriber] Connected");
 
+      this.subscribe("info", (m) => {
+        const data = JSON.parse(m);
+        if (data.platform !== "stoat") return; // for now
+        if (data.type !== "connected") return;
+        this.emit("ready");
+      });
+
       this.subReady = true;
       if (this.clientReady && !this.connected) {
-        this.emit("ready");
+        this.emit("redisReady");
         this.connected = true;
       }
+    });
+
+    this.once("redisReady", () => {
+      this.client.publish("info", JSON.stringify({
+        platform: "backend",
+        type: "requestConnected"
+      }));
     });
   }
   /**
