@@ -176,5 +176,9 @@ export class APIServer {
       const servers = await this.redis.stoat.get("sharedServers", req.data.user.id);
       res.status(200).send(servers);
     });
+    this.secured.get("/server/:id/channels", async (req, res) => {
+      const server = await this.redis.stoat.get("server", req.params.id, req.data.user.id);
+      res.status(200).send(server);
+    });
   }
 }

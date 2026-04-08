@@ -124,7 +124,7 @@ export class RedisHandler extends EventEmitter {
    * @template T
    * @param {T} data
    * @param {string} platform Identifier of the client that should reply
-   * @returns {Promise<T>}
+   * @returns {Promise<T | { error: string }>}
    */
   async request(data, platform) {
     const content = data;
@@ -155,13 +155,15 @@ export class RedisHandler extends EventEmitter {
    * @returns {Promise<Object>}
    */
   async get(data) {
-    const key = data.platform + ":" + data.type + ":" + data.key;
+    // TODO: revisit this, possibly remove accessor from redis store key
+    const key = data.platform + ":" + data.type + ":" + data.key + ((data.accessor) ? ":" + data.accessor : "");
     try {
       const data = JSON.parse(await this.client.get(key));
       if (data) return data;
     } catch (e) { }
-    const d = await this.request({ type: data.type, key: data.key }, data.platform);
+    const d = await this.request({ type: data.type, key: data.key, accessor: data.accessor }, data.platform);
     if (d) {
+      if (d.error) return d; // don't cache in case of any errors
       await this.client.set(key, JSON.stringify(d), {
         expiration: {
           type: "EX",
@@ -197,10 +199,11 @@ export class Stoat {
   /**
    * @param {string} type
    * @param {string} key
+   * @param {string} [accessor] Used on some requests to verify access to that resource
    * @returns {Promise<Object>}
    */
-  get(type, key) {
-    return this.redis.get({ platform: "stoat", key: key, type: type });
+  get(type, key, accessor) {
+    return this.redis.get({ platform: "stoat", key: key, type: type, accessor });
   }
   /**
    * @param {string} channel
