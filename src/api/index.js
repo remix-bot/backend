@@ -178,7 +178,17 @@ export class APIServer {
     });
     this.secured.get("/server/:id/channels", async (req, res) => {
       const server = await this.redis.stoat.get("server", req.params.id, req.data.user.id);
-      res.status(200).send(server);
+      res.status(200).send(server?.channels || server);
+    });
+
+    this.secured.post("/voice/:id/join", async (req, res) => {
+      if (!req.params?.id || !req.body.text) return res.status(400).send({ error: "invalid voice or text channel id" });
+      const response = await this.redis.stoat.call("join", {
+        channel: req.params.id,
+        text: req.body.text,
+        user: req.data.user.id
+      });
+      res.status(200).send(response);
     });
   }
 }

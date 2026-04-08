@@ -152,6 +152,8 @@ export class RedisHandler extends EventEmitter {
    * @param {("fluxer"|"stoat")} data.platform
    * @param {string} data.key
    * @param {string} data.type
+   * @param {string} [data.accessor] An additional identifier used for authentication
+   * @param {boolean} [data.noCache]
    * @returns {Promise<Object>}
    */
   async get(data) {
@@ -162,7 +164,7 @@ export class RedisHandler extends EventEmitter {
       if (data) return data;
     } catch (e) { }
     const d = await this.request({ type: data.type, key: data.key, accessor: data.accessor }, data.platform);
-    if (d) {
+    if (d && !data.noCache) {
       if (d.error) return d; // don't cache in case of any errors
       await this.client.set(key, JSON.stringify(d), {
         expiration: {
@@ -172,6 +174,16 @@ export class RedisHandler extends EventEmitter {
       });
     }
     return d;
+  }
+  /**
+   * utility wrapper for this.request
+   * @param {string} func
+   * @param {any} data
+   * @param {string} platform
+   * @returns
+   */
+  async call(func, data, platform) {
+    return await this.request({ type: "function", params: { func, data } }, platform);
   }
 }
 
@@ -200,10 +212,20 @@ export class Stoat {
    * @param {string} type
    * @param {string} key
    * @param {string} [accessor] Used on some requests to verify access to that resource
+   * @param {boolean} [noCache=false]
    * @returns {Promise<Object>}
    */
-  get(type, key, accessor) {
-    return this.redis.get({ platform: "stoat", key: key, type: type, accessor });
+  get(type, key, accessor, noCache=false) {
+    return this.redis.get({ platform: "stoat", key: key, type: type, accessor, noCache });
+  }
+  /**
+   *
+   * @param {string} func
+   * @param {any} data
+   * @returns
+   */
+  call(func, data) {
+    return this.redis.call(func, data, "stoat");
   }
   /**
    * @param {string} channel
