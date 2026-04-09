@@ -128,6 +128,9 @@ export class APIServer {
     this.app.get("/commands", (req, res) => {
       res.send(this.redis.stoat.commands);
     });
+    this.app.get("/connectioncheck", async (req, res) => {
+      res.status(200).send(await this.redis.stoat.call("testConnection"));
+    });
   }
   /**
    * @param {Request} req
