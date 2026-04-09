@@ -169,7 +169,7 @@ export class Socket extends EventEmitter {
         const res = await this.db.verifyAPIToken(token, id);
         if (!res.valid) {
           if (!this.closeTimeout) clearTimeout(this.closeTimeout);
-          this.socket.cose(3000, "Invalid authentication.");
+          this.socket.close(3000, "Invalid authentication.");
           return;
         }
 

@@ -79,6 +79,15 @@ export class APIServer {
       credentials: true
     }));
     //this.app.use(cors());
+    this.app.use((req, res, next) => {
+      try {
+        decodeURIComponent(req.path);
+      } catch (e) {
+        console.log(new Date().toLocaleString(), req.url, e);
+        return res.redirect('/404');
+      }
+      next();
+    });
 
     this.db = new DatabaseManager(config.mysql);
 
