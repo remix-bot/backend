@@ -23,6 +23,7 @@ export class PlayerManager {
     data.forEach((p) => {
       const player = this.deserialisePlayer(p);
       this.playerMap.set(p.channel.id, player);
+      this.platform.users.onPlayerInit(player.users, player);
     });
     console.log(this.playerMap);
 
@@ -35,7 +36,7 @@ export class PlayerManager {
       if (type === "init") {
         const p = this.deserialisePlayer(player);
         this.playerMap.set(p.channel.id, p);
-        this.platform.users.onPlayerInit(p.channel.voiceParticipants, p);
+        this.platform.users.onPlayerInit(p.users, p);
         return;
       } else if (type === "close") {
         const id = player.channel.id;
@@ -60,7 +61,7 @@ export class PlayerManager {
    */
   deserialisePlayer(p) {
     console.log("deserialisation", p.channel.id);
-    const player = new Player(this.platform.channelPrefix + "player_" + p.channel.id, this.redis);
+    const player = new Player(this.platform, p.channel.id);
     player.deserialise(p);
     return player;
   }
@@ -174,17 +175,17 @@ export class Player extends EventEmitter {
   channel;
   /** @type {Queue} */
   queue;
-  /** @type {Object[]} */
+  /** @type {string[]} */
   users;
   /**
-   * @param {string} channel
-   * @param {RedisHandler} subscriber
+   * @param {Stoat} platform
+   * @param {string} channelId redis channel suffix
    */
-  constructor(channel, subscriber) {
+  constructor(platform, channelId) {
     super();
 
-    this.redisChannel = channel;
-    this.redis = subscriber;
+    this.platform = platform;
+    this.channelId = channelId;
 
     this.setupEvents();
   }
@@ -227,13 +228,13 @@ export class Player extends EventEmitter {
           this.users.push(data);
           break;
         case "leave":
-          const idx = this.users.findIndex(u => u.id === data.id);
+          const idx = this.users.findIndex(u => u === data.id);
           if (idx === -1) break;
           this.users.splice(idx, 1);
           break;
       }
     }
-    this.redis.subscribe(this.redisChannel, listener);
+    this.platform.subscribe(this.platform.channelPrefix + "player_" + this.channelId, listener);
   }
 
   get elapsed() {
@@ -254,7 +255,7 @@ export class Player extends EventEmitter {
     };
     this.queue = new Queue();
     this.queue.deserialise(redisData.queue);
-    this.users = this.channel.voiceParticipants;
+    this.users = redisData.users;
   }
   /**
    * @returns {SerialisedPlayer}

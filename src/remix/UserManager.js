@@ -108,13 +108,14 @@ export class UserManager {
   }
   /**
    *
-   * @param {Object[]} users
+   * @param {string[]} users
    * @param {Player} p
    */
   onPlayerInit(users, p) {
+    console.log("playerInit");
     console.log(users);
     users.forEach(u => {
-      const user = this.cache.get(u.id);
+      const user = this.getUser(u);
       if (!user) return;
       user.handleUpdate({
         type: "join",
