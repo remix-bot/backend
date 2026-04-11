@@ -4,6 +4,7 @@ import { Server as HTTPSServer } from "https";
 import { WebSocketServer } from "ws";
 import { RedisManager } from "../remix/RedisHandler.js";
 import { DatabaseManager } from "../db/DatabaseManager.js";
+import { Player } from "../remix/PlayerManager.js";
 
 export class SocketHandler {
   server;
@@ -102,6 +103,7 @@ export class Socket extends EventEmitter {
     const joinListener = (channel) => {
       console.log("joining");
       const player = this.redis.stoat.players.get(channel);
+      this.subscribePlayer(player);
       if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
       this.socket.send(JSON.stringify({
         op: OP[1],
@@ -123,9 +125,18 @@ export class Socket extends EventEmitter {
     user.on("join", joinListener);
     user.on("leave", leaveListener);
 
+    const playerListeners = user.connectedTo.map((cid) => {
+      const player = this.redis.stoat.players.get(cid);
+      if (!player) return console.warn("unknown player " + cid + " requested by " + user.id);
+      return { player, listener: this.subscribePlayer(player)};
+    });
+
     this.onClose = () => {
       user.off("join", joinListener);
       user.off("leave", leaveListener);
+      playerListeners.forEach((p) => {
+        p.player.off("update", p.listener);
+      })
     }
 
     //this.handler.socket
@@ -136,6 +147,22 @@ export class Socket extends EventEmitter {
         data: user.serialise()
       }
     }));
+  }
+  /**
+   * @param {Player} p
+   */
+  subscribePlayer(p) { // TODO: switch to more granular updates
+    const listener = (player) => {
+      this.socket.send(JSON.stringify({
+        op: OP[1],
+        data: {
+          type: "player",
+          data: p.serialise()
+        }
+      }));
+    }
+    p.on("update", listener);
+    return listener;
   }
   delayClose() {
     clearTimeout(this.closeTimeout);

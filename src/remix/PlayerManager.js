@@ -123,10 +123,10 @@ export class Queue {
     switch (type) {
       case "add":
         const vid = event.data;
-        if (event.append) {
-          this.data.push(vid);
+        if (vid.append) {
+          this.data.push(vid.data);
         } else {
-          this.data.unshift(vid);
+          this.data.unshift(vid.data);
         }
         break;
       case "remove":
@@ -206,6 +206,7 @@ export class Player extends EventEmitter {
           break;
         case "pause":
           this.paused = true;
+          this.timeDiff = data.elapsedTime;
           break;
         case "resume":
           this.paused = false;
@@ -233,6 +234,7 @@ export class Player extends EventEmitter {
           this.users.splice(idx, 1);
           break;
       }
+      this.emit("update");
     }
     this.platform.subscribe(this.platform.channelPrefix + "player_" + this.channelId, listener);
   }
@@ -267,6 +269,8 @@ export class Player extends EventEmitter {
       volume: this.volume,
       channel: this.channel,
       queue: this.queue.serialise(),
+      started: this.startPlaying,
+      timeDiff: this.timeDiff
     }
   }
 
