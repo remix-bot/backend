@@ -266,7 +266,7 @@ export class Player extends EventEmitter {
     return {
       loop: this.loop,
       paused: this.paused,
-      volume: this.volume,
+      volume: this.volume, // in percent (* 100)
       channel: this.channel,
       queue: this.queue.serialise(),
       started: this.startPlaying,

@@ -202,5 +202,26 @@ export class APIServer {
       });
       res.status(200).send(response);
     });
+    this.secured.post("/dashboard/control", async (req, res) => {
+      if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });
+      if (!["pausePlayback", "skip", "resumePlayback", "volume"].includes(req.body.action)) return res.status(400).send({ message: "Invalid action" });
+      const r = await this.redis.stoat.call(req.body.action, {
+        user: req.data.user.id,
+        player: req.data.user.connectedTo[0]
+      });
+      return res.status(200).send(r);
+    });
+    this.secured.post("/dashboard/queue", async (req, res) => {
+      if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });
+      const type = (req.body.query.startsWith("remix://radio/")) ? "radio" : "video";
+      const query = (type === "radio") ? req.body.query.slice("remix://radio/".length) : req.body.query;
+      const r = await this.redis.stoat.call("addToQueue", {
+        user: req.data.user.id,
+        player: req.data.user.connectedTo[0],
+        type: type,
+        query
+      });
+      return res.status(200).send(r);
+    });
   }
 }
