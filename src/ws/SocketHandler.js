@@ -2,7 +2,7 @@ import EventEmitter from "events";
 import { createServer, Server } from "http";
 import { Server as HTTPSServer } from "https";
 import { WebSocketServer } from "ws";
-import { RedisManager } from "../remix/RedisHandler.js";
+import { RedisManager, Platform } from "../remix/RedisHandler.js";
 import { DatabaseManager } from "../db/DatabaseManager.js";
 import { Player } from "../remix/PlayerManager.js";
 
@@ -41,11 +41,14 @@ export class SocketHandler {
       case "stoat":
         handler = this.redis.stoat;
         break;
+      case "fluxer":
+        handler = this.redis.fluxer;
+        break;
       default:
         s.close(3003, "invalid path");
         return;
     }
-    const socket = new Socket(s, this.redis, this.db);
+    const socket = new Socket(s, handler, this.db);
     socket.once("authenticated", (id) => {
       this.sockets.set(id, socket);
       socket.once("close", () => {
@@ -63,14 +66,14 @@ export class Socket extends EventEmitter {
   user = null;
   /**
    * @param {WebSocket} socket
-   * @param {RedisManager} redis
+   * @param {Platform} platform
    * @param {DatabaseManager} db
    */
-  constructor(socket, redis, db) {
+  constructor(socket, platform, db) {
     super();
 
     this.socket = socket;
-    this.redis = redis;
+    this.platform = platform;
     this.db = db;
 
     this.closeTimeout = setTimeout(this.forceClose.bind(this), 30 * 1000); // 30 seconds to authenticate
@@ -99,10 +102,10 @@ export class Socket extends EventEmitter {
     /*this.redis.handler.subscribe(this.user, (m) => {
       console.log("Message for user: ", m);
     });*/
-    const user = await this.redis.stoat.users.getOrFetchUser(this.user);
+    const user = await this.platform.users.getOrFetchUser(this.user);
     const joinListener = (channel) => {
       console.log("joining");
-      const player = this.redis.stoat.players.get(channel);
+      const player = this.platform.players.get(channel);
       this.subscribePlayer(player);
       if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
       this.socket.send(JSON.stringify({
@@ -126,7 +129,7 @@ export class Socket extends EventEmitter {
     user.on("leave", leaveListener);
 
     const playerListeners = user.connectedTo.map((cid) => {
-      const player = this.redis.stoat.players.get(cid);
+      const player = this.platform.players.get(cid);
       if (!player) return console.warn("unknown player " + cid + " requested by " + user.id);
       return { player, listener: this.subscribePlayer(player)};
     });

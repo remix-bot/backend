@@ -1,5 +1,5 @@
-import { DatabaseManager } from "../db/DatabaseManager";
-import { RedisManager } from "../remix/RedisHandler";
+import { DatabaseManager } from "../db/DatabaseManager.js";
+import { RedisManager } from "../remix/RedisHandler.js";
 
 /**
  * @typedef {import("express").Request} Request

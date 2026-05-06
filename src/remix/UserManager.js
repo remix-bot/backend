@@ -1,5 +1,5 @@
 import EventEmitter from "node:events";
-import { Stoat } from "./RedisHandler.js";
+import { Platform, Stoat } from "./RedisHandler.js";
 import { Player } from "./PlayerManager.js";
 
 /** @typedef {import("./RedisHandler.js").PlatformString} PlatformString */
@@ -103,7 +103,7 @@ export class User extends EventEmitter {
 export class UserManager {
 
   /**
-   * @param {Stoat} platform
+   * @param {Platform} platform
    */
   constructor(platform) {
     this.platform = platform;

@@ -1,4 +1,4 @@
-import { RedisHandler, RedisManager, Stoat } from "./RedisHandler.js";
+import { Platform, RedisHandler, RedisManager, Stoat } from "./RedisHandler.js";
 import EventEmitter from "node:events";
 
 export class PlayerManager {
@@ -6,7 +6,7 @@ export class PlayerManager {
   playerMap = new Map();
   /**
    * @param {RedisHandler} redis
-   * @param {Stoat} platform
+   * @param {Platform} platform
    */
   constructor(redis, platform) {
     this.redis = redis;

@@ -15,6 +15,7 @@ export class RedisManager {
     this.handler = new RedisHandler(config);
 
     this.stoat = new Stoat(this.handler);
+    this.fluxer = new Fluxer(this.handler);
   }
 }
 
@@ -189,22 +190,126 @@ export class RedisHandler extends EventEmitter {
 
 /**
  * @typedef {("stoat"|"fluxer")} PlatformString
+ * @typedef {import("redis").PubSubListener} PubSubListener
  */
+ /**
+  * Abstract platform base class. May be expanded in the future.
+  * @abstract
+  */
+export class Platform {
+  /** @type {PlayerManager} */
+  players;
+  /** @type {UserManager} */
+  users;
+  // TODO: define command typings
+  /** @type {Object[]} */
+  commands;
 
-export class Fluxer {
+  constructor() {
+
+  }
+
+  #fail() {
+    throw "Property accessed/function called on abstract class.";
+  }
+  get channelPrefix() {
+    return this.#fail();
+  }
+  /** @type {PlatformString} */
+  get identifier() {
+    return this.#fail();
+  }
+  /**
+   * @param {string} type
+   * @param {string} key
+   * @param {string} [accessor] Used on some requests to verify access to that resource
+   * @param {boolean} [noCache=false]
+   * @returns {Promise<Object>}
+   */
+  get(type, key, accessor, noCache = false) { this.#fail(); }
+  /**
+     *
+     * @param {string} func
+     * @param {any} data
+     * @returns {any}
+     */
+  call(func, data) { this.#fail(); }
+  /**
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  subscribe(channel, listener) { this.#fail(); }
+  /**
+   *
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  unsubscribe(channel, listener) { this.#fail(); }
+}
+
+export class Fluxer extends Platform {
   /**
    *
    * @param {RedisHandler} redis
    */
   constructor(redis) {
+    super();
+
     this.redis = redis;
-    this.redis.on("ready", () => {
-      // TODO:
+    this.redis.on("ready", async () => {
+      this.commands = await this.get("commands", "*"); // TODO: verify on fluxer
     });
+    this.players = new PlayerManager(this.redis, this);
+    this.users = new UserManager(this);
+  }
+
+  get identifier() {
+    return "fluxer";
+  }
+  get channelPrefix() {
+    return "fluxer:";
+  }
+  /**
+   * @param {string} type
+   * @param {string} key
+   * @param {string} [accessor] Used on some requests to verify access to that resource
+   * @param {boolean} [noCache=false]
+   * @returns {Promise<Object>}
+   */
+  get(type, key, accessor, noCache=false) {
+    return this.redis.get({ platform: "fluxer", key: key, type: type, accessor, noCache });
+  }
+  /**
+   *
+   * @param {string} func
+   * @param {any} data
+   * @returns
+   */
+  call(func, data) {
+    return this.redis.call(func, data, "fluxer");
+  }
+  /**
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  subscribe(channel, listener) {
+    return this.redis.subscribe(channel, listener);
+  }
+  /**
+   *
+   * @param {string} channel
+   * @param {PubSubListener<false>} listener
+   * @returns {Promise<void>}
+   */
+  unsubscribe(channel, listener) {
+    return this.redis.unsubscribe(channel, listener);
   }
 }
 
-export class Stoat {
+export class Stoat extends Platform {
   /** @type {Object[]} */
   commands;
 
@@ -212,6 +317,8 @@ export class Stoat {
    * @param {RedisHandler} redis
    */
   constructor(redis) {
+    super();
+
     this.redis = redis;
     this.redis.on("ready", async () => {
       this.commands = await this.get("commands", "*");
