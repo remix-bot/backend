@@ -2,6 +2,8 @@ import EventEmitter from "node:events";
 import { Stoat } from "./RedisHandler.js";
 import { Player } from "./PlayerManager.js";
 
+/** @typedef {import("./RedisHandler.js").PlatformString} PlatformString */
+
 export class User extends EventEmitter {
   /** @type {string} */
   id;
@@ -13,6 +15,8 @@ export class User extends EventEmitter {
   displayName;
   /** @type {{url: string}} */
   avatar;
+  /** @type {PlatformString} */
+  type = "stoat";
 
   /**
    * @param {string} id

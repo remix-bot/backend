@@ -8,6 +8,8 @@ import { SocketHandler } from "../ws/SocketHandler.js";
 import { RedisManager } from "../remix/RedisHandler.js";
 import { DatabaseManager } from "../db/DatabaseManager.js";
 import { RedisStore } from "connect-redis";
+import { FluxerAuth } from "../auth/FluxerAuth.js";
+import { AuthenticationManager } from "../auth/AuthenticationManager.js";
 
 export class APIServer {
   /**
@@ -20,6 +22,11 @@ export class APIServer {
    * @param {string} [config.ssl.private] Path to the private key file
    * @param {string} [config.ssl.cert] Path to the cert file
    * @param {number} [config.ssl.httpPort] Port the http port will listen on to redirect to https
+   *
+   * @param {Object} config.fluxer
+   * @param {string} config.fluxer.id
+   * @param {string} config.fluxer.secret
+   * @param {string} config.fluxer.redirectUri
    *
    * @param {PoolOptions} config.mysql
    */
@@ -45,6 +52,8 @@ export class APIServer {
     this.server.listen(this.port, () => {
       console.log("Listening on port " + this.port);
     });
+    this.frontendOrigin = config.frontendOrigin;
+    this.config = config;
 
     this.redis = new RedisManager(config);
     const redisStore = new RedisStore({
@@ -92,6 +101,7 @@ export class APIServer {
     this.db = new DatabaseManager(config.mysql);
 
     this.sockets = new SocketHandler(this.server, this.redis, this.db);
+    this.auth = new AuthenticationManager(this.redis, this.db);
 
     this.setupPublic();
     this.setupSecure();
@@ -119,10 +129,7 @@ export class APIServer {
       if (!user) {
         return res.status(400).send({ message: "Invalid user data" });
       }
-      const token = await this.db.generateLoginCode(user);
-      req.session.user = user;
-      req.session.code = token;
-      req.session.verified = false;
+      const token = await this.auth.initiateLogin(user);
       res.status(200).send({ code: token, user });
     });
     this.app.get("/login/code", (req, res) => {
@@ -140,12 +147,18 @@ export class APIServer {
     this.app.get("/connectioncheck", async (req, res) => {
       res.status(200).send(await this.redis.stoat.call("testConnection"));
     });
+
+    const auth = new Router();
+    const fluxer = new FluxerAuth(auth, this, this.config.fluxer);
+
+    this.app.use("/auth", auth);
   }
   /**
    * @param {Request} req
    * @returns {Promise<boolean>}
    */
-  async verifySession(req) {
+   /*async verifySession(req) {
+    if (req.session.fluxerVerified) return true;
     if (req.session.verified) return true;
     if (!req.session.code || !req.session.user) {
       const token = req.headers.token;
@@ -155,22 +168,17 @@ export class APIServer {
       if (!data.valid) return false;
       req.session.user = data.user;
       req.session.verified = true;
+      req.session.type = "stoat";
       return true;
     }
     if (!(await this.db.verifyLoginCode(req.session.user, req.session.code))) return false;
     req.session.verified = true;
+    req.session.type = "stoat";
     return true;
-  }
+  }*/
   setupSecure() {
     this.secured = new Router();
-    this.secured.use(/** @param {Request} req @param {Response} res */async (req, res, next) => {
-      if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized." });
-      req.data = {
-        user: await this.redis.stoat.users.getOrFetchUser(req.session.user)
-      };
-
-      next();
-    });
+    this.secured.use(this.auth.middleware());
     this.app.use(this.secured);
 
     this.secured.get("/info", async (req, res) => {
@@ -204,7 +212,7 @@ export class APIServer {
     });
     this.secured.post("/voice/:id/leave", async (req, res) => {
       if (!req.params?.id || !req.body.channel) return res.status(400).send({ error: "invalid voice or text channel id" });
-      
+
     });
     this.secured.post("/dashboard/control", async (req, res) => {
       if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });

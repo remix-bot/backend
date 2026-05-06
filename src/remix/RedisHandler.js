@@ -149,7 +149,7 @@ export class RedisHandler extends EventEmitter {
   /**
    *
    * @param {Object} data
-   * @param {("fluxer"|"stoat")} data.platform
+   * @param {PlatformString} data.platform
    * @param {string} data.key
    * @param {string} data.type
    * @param {string} [data.accessor] An additional identifier used for authentication
@@ -184,6 +184,23 @@ export class RedisHandler extends EventEmitter {
    */
   async call(func, data, platform) {
     return await this.request({ type: "function", params: { func, data } }, platform);
+  }
+}
+
+/**
+ * @typedef {("stoat"|"fluxer")} PlatformString
+ */
+
+export class Fluxer {
+  /**
+   *
+   * @param {RedisHandler} redis
+   */
+  constructor(redis) {
+    this.redis = redis;
+    this.redis.on("ready", () => {
+      // TODO:
+    });
   }
 }
 
