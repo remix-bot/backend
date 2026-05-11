@@ -2,6 +2,7 @@ import EventEmitter from "events";
 import { createClient } from "redis";
 import { PlayerManager } from "./PlayerManager.js";
 import { UserManager } from "./UserManager.js";
+import { AuthenticationManager } from "../auth/AuthenticationManager.js";
 
 /**
  * Interface to the Stoat and Fluxer servers.
@@ -10,15 +11,32 @@ export class RedisManager {
   /**
    * @param {Object} config
    * @param {RedisClientOptions} config.redis
+   * @param {AuthenticationManager} auth
    */
-  constructor(config) {
+  constructor(config, auth) {
     this.handler = new RedisHandler(config);
+    this.auth = auth;
 
-    this.stoat = new Stoat(this.handler);
-    this.fluxer = new Fluxer(this.handler);
+    this.stoat = new Stoat(this.handler, auth);
+    this.fluxer = new Fluxer(this.handler, auth);
   }
 }
 
+/**
+ * @template T
+ * @callback Getter
+ * @param {ValueDescriptor} data
+ * @returns {Promise<T>}
+ */
+/**
+ * @typedef ValueDescriptor
+ * @property {PlatformString} platform
+ * @property {string} key
+ * @property {string} type
+ * @property {string} [accessor] An additional identifier used for authentication
+ * @property {any} additional Further information to the called function
+ * @property {boolean} [noCache]
+ */
 export class RedisHandler extends EventEmitter {
   clientReady = false;
   subReady = false;
@@ -177,6 +195,30 @@ export class RedisHandler extends EventEmitter {
     return d;
   }
   /**
+   * @template T
+   * @param {ValueDescriptor} data
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @returns {Promise<T>}
+   */
+  async cacheExtraneous(data, getter) {
+    const key = data.platform + ":" + data.type + ":" + data.key + ((data.accessor) ? ":" + data.accessor : "");
+    try {
+      const data = JSON.parse(await this.client.get(key));
+      if (data) return data;
+    } catch (e) { }
+    const d = await getter(data);
+    if (d && !data.noCache) {
+      if (d.error) return d; // don't cache in case of any errors
+      await this.client.set(key, JSON.stringify(d), {
+        expiration: {
+          type: "EX",
+          value: 5 * 60, // 5 minutes
+        },
+      });
+    }
+    return d;
+  }
+  /**
    * utility wrapper for this.request
    * @param {string} func
    * @param {any} data
@@ -193,6 +235,14 @@ export class RedisHandler extends EventEmitter {
  * @typedef {import("redis").PubSubListener} PubSubListener
  */
  /**
+  * @typedef PlatformValueDescriptor
+  * @property {string} key
+  * @property {string} type
+  * @property {string} [accessor] An additional identifier used for authentication
+  * @property {any} additional Further information to the called function
+  * @property {boolean} [noCache]
+  */
+ /**
   * Abstract platform base class. May be expanded in the future.
   * @abstract
   */
@@ -205,8 +255,20 @@ export class Platform {
   /** @type {Object[]} */
   commands;
 
-  constructor() {
+  /**
+   *
+   * @param {RedisHandler} _handler
+   * @param {AuthenticationManager} _auth
+   */
+  constructor(_handler, _auth) {
 
+  }
+
+  /**
+   * @returns {AuthenticationManager}
+   */
+  getAuthManager() {
+    this.#fail();
   }
 
   #fail() {
@@ -227,6 +289,13 @@ export class Platform {
    * @returns {Promise<Object>}
    */
   get(type, key, accessor, noCache = false) { this.#fail(); }
+  /**
+   * @template T
+   * @param {PlatformValueDescriptor} data
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @returns {Promise<T>}
+   */
+  cacheExtraneous(data, getter) { this.#fail();  }
   /**
      *
      * @param {string} func
@@ -253,11 +322,13 @@ export class Fluxer extends Platform {
   /**
    *
    * @param {RedisHandler} redis
+   * @param {AuthenticationManager} auth
    */
-  constructor(redis) {
+  constructor(redis, auth) {
     super();
 
     this.redis = redis;
+    this.auth = auth;
     this.redis.on("ready", async () => {
       this.commands = await this.get("commands", "*"); // TODO: verify on fluxer
     });
@@ -271,6 +342,10 @@ export class Fluxer extends Platform {
   get channelPrefix() {
     return "fluxer:";
   }
+
+  getAuthenticationManager() {
+    return this.auth;
+  }
   /**
    * @param {string} type
    * @param {string} key
@@ -278,8 +353,23 @@ export class Fluxer extends Platform {
    * @param {boolean} [noCache=false]
    * @returns {Promise<Object>}
    */
-  get(type, key, accessor, noCache=false) {
+  get(type, key, accessor, noCache = false) {
+    if (type === "user") {
+      // TODO: get user object via auth manager and cache
+    }
     return this.redis.get({ platform: "fluxer", key: key, type: type, accessor, noCache });
+  }
+  /**
+   * @template T
+   * @param {PlatformValueDescriptor} data
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @returns {Promise<T>}
+   */
+  cacheExtraneous(data, getter) {
+    return this.redis.cacheExtraneous({
+      platform: this.identifier,
+      ...data
+    }, getter);
   }
   /**
    *
