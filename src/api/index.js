@@ -138,7 +138,7 @@ export class APIServer {
     this.app.post("/login/verify", async (req, res) => {
       const v = await this.verifySession(req);
       if (!v) return res.send({ verified: false });
-      const apiToken = await this.db.generateAPIToken(req.session.user);
+      const apiToken = await this.db.generateAPIToken(req.session.user, req.session.authPlatform);
       res.send({ verified: true, token: apiToken });
     });
     this.app.get("/commands", (req, res) => {
@@ -149,7 +149,7 @@ export class APIServer {
     });
 
     const auth = new Router();
-    const fluxer = new FluxerAuth(auth, this, this.config.fluxer);
+    const fluxer = new FluxerAuth(auth, this, this.redis.handler, this.config.fluxer);
 
     this.app.use("/auth", auth);
   }

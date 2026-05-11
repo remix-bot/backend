@@ -4,6 +4,8 @@ import mysql2 from "mysql2/promise";
 const { FieldPacket, PoolOptions, QueryResult } = mysql2;
 import { Utils } from "../Utils.js";
 
+/** @typedef {import("../remix/RedisHandler.js").PlatformString} PlatformString */
+
 export class DatabaseManager {
   /**
    * @param {PoolOptions} config Based on https://sidorares.github.io/node-mysql2/docs#using-connection-pools
@@ -49,13 +51,14 @@ export class DatabaseManager {
   /**
    *
    * @param {string} user
+   * @param {PlatformString} [platform]
    * @returns {Promise<{token: string, id: string}>} API Token and ID, both have to be provided for websocket calls and reauthentication.
    */
-  async generateAPIToken(user) {
+  async generateAPIToken(user, platform="stoat") {
     const id = Utils.uid();
     const token = await Utils.randomToken();
     try {
-      await this.execute(`INSERT INTO api_tokens (user, id, token, createdAt) VALUES (?, ?, ?, NOW())`, [user, id, await this.hash(token)])
+      await this.execute(`INSERT INTO api_tokens (user, id, platform, token, createdAt) VALUES (?, ?, ?, ?, NOW())`, [user, id, platform, await this.hash(token)])
     } catch (e) {
       console.log("api token generation error:", e);
       return null;
@@ -86,7 +89,7 @@ export class DatabaseManager {
   /**
    * @param {string} token
    * @param {string} id
-   * @returns {Promise<{ valid: boolean, user: string }>}
+   * @returns {Promise<{ valid: boolean, user: string, platform: PlatformString }>}
    */
   async verifyAPIToken(token, id) {
     try {
@@ -100,6 +103,7 @@ export class DatabaseManager {
 
       return {
         valid: true,
+        platform: res[0].platform,
         user: res[0].user
       };
     } catch (e) {
@@ -125,10 +129,36 @@ export class DatabaseManager {
       }
       return false;
     } catch (e) {
-      console.llg("SELECT login:codes:", e);
+      console.log("SELECT login:codes:", e);
       return false;
     }
   }
+
+  /**
+   * @param {string} user
+   * @returns {Promise<string | null>}
+   */
+  async getFluxerAccessToken(user) {
+    try {
+      const res = await this.execute("SELECT * FROM fluxer_auth WHERE user=? ODER BY expires DESC LIMIT=1", [user]);
+      if (res.length == 0) return null;
+      // TODO: possibly refresh the token if adequate
+      return res[0].token;
+    } catch (e) {
+      console.error("SELECT fluxer_auth: ", user, e);
+    }
+    return null;
+  }
+  async storeFluxerAccessToken(user, data) {
+    try {
+      const res = await this.execute("INSERT INTO fluxer_auth (user, token, expires, refresh) VALUES (?, ?, ?, ?)", [
+        user, data.token, data.expires, data.refreshToken
+      ]);
+    } catch (e) {
+      console.error("INSERT INTO fluxer_auth: ", user, e);
+    }
+  }
+
   /**
    * Gracefully closes any database connections
    * @returns {Promise<void>}

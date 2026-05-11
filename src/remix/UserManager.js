@@ -172,3 +172,20 @@ export class UserManager {
     return this.platform.unsubscribe(this.platform.channelPrefix + "user_" + id, callback);
   }
 }
+
+export class FluxerUserManager extends UserManager {
+  async getOrFetchUser(id) {
+    const user = this.cache.get(id) || new User(id, this);
+    const data = await this.platform.cacheExtraneous({
+      type: "user",
+      key: id,
+      noCache: false
+    }, async (data) => {
+      const auth = this.platform.getAuthManager();
+      return await auth.getFluxerUser(data.key);
+    });
+    user.deserialise(data);
+    this.cache.set(id, user);
+    return user;
+  }
+}

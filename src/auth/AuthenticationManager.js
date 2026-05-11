@@ -13,7 +13,32 @@ import { RedisManager } from "../remix/RedisHandler.js";
   * @property {Object} data
   */
 
+  /**
+   * @typedef FluxerUser
+   * @property {string} id
+   * @property {string} username
+   * @property {string} discriminator
+   * @property {string} global_name
+   * @property {string} avatar
+   * @property {number} avatar_color
+   * @property {number} flags
+   * @property {boolean} bot
+   * @property {boolean} system
+   * @property {string} email
+   * @property {boolean} verified
+   */
+
 export class AuthenticationManager {
+  /**
+   * @typedef UserCredentials
+   * Fluxer OAuth2 credentials
+   * @property {string} token
+   * @property {string} type
+   */
+  /** @type {Map<string, UserCredentials>} */
+  userCredentials = new Map();
+
+  fluxerEndpoint = "https://api.fluxer.app/v1";
   /**
    *
    * @param {RedisManager} redis
@@ -47,6 +72,46 @@ export class AuthenticationManager {
     req.session.verified = true;
     req.session.type = "stoat";
     return true;
+  }
+
+  /**
+   *
+   * @param {string} user Fluxer user id
+   * @returns {Promise<string | null>} The fluxer access token stored for that user account or null if not found or if an error occured.
+   */
+  async getFluxerAuthToken(user) {
+    return this.redis.handler.cacheExtraneous({
+      platform: "fluxer",
+      type: "access_token",
+      key: user
+    }, async (data) => this.db.getFluxerAccessToken(data.key));
+  }
+
+  /**
+   * @param {string} user Fluxer user id
+   * @returns {Promise<FluxerUser>}
+   */
+  async getFluxerUser(user) {
+    const res = await (await this.get(this.fluxerEndpoint + "/oauth2/@me", await this.getFluxerAuthToken(user))).json();
+    if (!!res.errors) {
+      console.error("Fluxer user fetch error: ", res);
+      return null;
+    }
+    return res.user;
+  }
+
+  /**
+   *
+   * @param {string} url
+   * @param {string} bearer Bearer Auth Token
+   */
+  get(url, bearer) { // TODO: extend capabilities
+    const params = new URLSearchParams();
+    params.append("Authorization", "Bearer " + bearer);
+    return fetch(url, {
+      method: "get",
+      headers: params
+    });
   }
 
   /**

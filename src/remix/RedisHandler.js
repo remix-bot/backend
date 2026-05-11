@@ -197,7 +197,7 @@ export class RedisHandler extends EventEmitter {
   /**
    * @template T
    * @param {ValueDescriptor} data
-   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is non existent (or already expired)
    * @returns {Promise<T>}
    */
   async cacheExtraneous(data, getter) {
@@ -292,7 +292,7 @@ export class Platform {
   /**
    * @template T
    * @param {PlatformValueDescriptor} data
-   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is non existent (or already expired)
    * @returns {Promise<T>}
    */
   cacheExtraneous(data, getter) { this.#fail();  }
@@ -362,7 +362,7 @@ export class Fluxer extends Platform {
   /**
    * @template T
    * @param {PlatformValueDescriptor} data
-   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is not existent (or already expired)
+   * @param {Getter<T>} getter The getter function for this value. Will only be called if the cache entry is non existent (or already expired)
    * @returns {Promise<T>}
    */
   cacheExtraneous(data, getter) {
