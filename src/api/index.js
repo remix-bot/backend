@@ -184,7 +184,8 @@ export class APIServer {
 
     this.secured.get("/info", async (req, res) => {
       res.status(200).send({
-        user: req.data.user.serialise()
+        user: req.data.user.serialise(),
+        accountType: req.session.type
       });
     });
     this.secured.get("/player/:channel", async (req, res) => {
