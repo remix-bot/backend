@@ -15,6 +15,36 @@ export class DatabaseManager {
       connectionLimit: 15,
       ...config
     });
+
+    this.init();
+  }
+
+  async init() {
+    /*
+    // TODO: complete
+    this.execute(`CREATE TABLE 'api_tokens' (
+      'user' varchar(26) COLLATE utf8mb4_general_ci NOT NULL,
+      'id' varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+      'platform' varchar(10) COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'stoat',
+      'token' varchar(70) CHARACTER SET utf8mb3 COLLATE utf8mb3_bin NOT NULL,
+      'createdAt' datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) IF NOT EXISTS ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;`, []);
+
+    this.execute(`CREATE TABLE 'fluxer_auth' (
+      'user' varchar(26) COLLATE utf8mb4_general_ci NOT NULL,
+      'token' varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+      'expires' int NOT NULL,
+      'refresh' varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+      'scope' varchar(255) COLLATE utf8mb4_general_ci NOT NULL
+    ) IF NOT EXISTS ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;`, []);
+
+    this.execute(`CREATE TABLE 'login_codes' (
+      'user' varchar(26) COLLATE utf8mb4_general_ci NOT NULL,
+      'id' varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
+      'token' varchar(70) COLLATE utf8mb4_general_ci NOT NULL,
+      'verified' tinyint(1) NOT NULL DEFAULT '0',
+      'createdAt' datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;`, []);*/
   }
   /**
    * @param {string} query
@@ -140,7 +170,7 @@ export class DatabaseManager {
    */
   async getFluxerAccessToken(user) {
     try {
-      const res = await this.execute("SELECT * FROM fluxer_auth WHERE user=? ODER BY expires DESC LIMIT=1", [user]);
+      const res = await this.execute("SELECT * FROM fluxer_auth WHERE user=? ORDER BY expires DESC LIMIT 1", [user]);
       if (res.length == 0) return null;
       // TODO: possibly refresh the token if adequate
       return res[0].token;
@@ -151,8 +181,8 @@ export class DatabaseManager {
   }
   async storeFluxerAccessToken(user, data) {
     try {
-      const res = await this.execute("INSERT INTO fluxer_auth (user, token, expires, refresh) VALUES (?, ?, ?, ?)", [
-        user, data.token, data.expires, data.refreshToken
+      const res = await this.execute("INSERT INTO fluxer_auth (user, token, expires, refresh, scope) VALUES (?, ?, ?, ?, ?)", [
+        user, data.token, data.expires, data.refreshToken, data.scope
       ]);
     } catch (e) {
       console.error("INSERT INTO fluxer_auth: ", user, e);

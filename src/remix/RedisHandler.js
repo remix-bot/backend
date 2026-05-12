@@ -1,7 +1,7 @@
 import EventEmitter from "events";
 import { createClient } from "redis";
 import { PlayerManager } from "./PlayerManager.js";
-import { UserManager } from "./UserManager.js";
+import { FluxerUserManager, UserManager } from "./UserManager.js";
 import { AuthenticationManager } from "../auth/AuthenticationManager.js";
 
 /**
@@ -19,6 +19,15 @@ export class RedisManager {
 
     this.stoat = new Stoat(this.handler, auth);
     this.fluxer = new Fluxer(this.handler, auth);
+  }
+
+  /**
+   *
+   * @param {AuthenticationManager} mgr
+   */
+  setAuthManager(mgr) {
+    this.auth = mgr;
+    this.fluxer.setAuthManager(mgr);
   }
 }
 
@@ -270,6 +279,13 @@ export class Platform {
   getAuthManager() {
     this.#fail();
   }
+  /**
+   *
+   * @param {AuthenticationManager} mgr
+   */
+  setAuthManager(mgr) {
+    this.#fail();
+  }
 
   #fail() {
     throw "Property accessed/function called on abstract class.";
@@ -333,7 +349,7 @@ export class Fluxer extends Platform {
       this.commands = await this.get("commands", "*"); // TODO: verify on fluxer
     });
     this.players = new PlayerManager(this.redis, this);
-    this.users = new UserManager(this);
+    this.users = new FluxerUserManager(this);
   }
 
   get identifier() {
@@ -343,8 +359,11 @@ export class Fluxer extends Platform {
     return "fluxer:";
   }
 
-  getAuthenticationManager() {
+  getAuthManager() {
     return this.auth;
+  }
+  setAuthManager(mgr) {
+    this.auth = mgr;
   }
   /**
    * @param {string} type

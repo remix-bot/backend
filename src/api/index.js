@@ -102,6 +102,7 @@ export class APIServer {
 
     this.sockets = new SocketHandler(this.server, this.redis, this.db);
     this.auth = new AuthenticationManager(this.redis, this.db);
+    this.redis.setAuthManager(this.auth);
 
     this.setupPublic();
     this.setupSecure();
@@ -136,7 +137,7 @@ export class APIServer {
       return res.status(200).send({ code: req.session?.code });
     })
     this.app.post("/login/verify", async (req, res) => {
-      const v = await this.verifySession(req);
+      const v = await this.auth.verifySession(req);
       if (!v) return res.send({ verified: false });
       const apiToken = await this.db.generateAPIToken(req.session.user, req.session.authPlatform);
       res.send({ verified: true, token: apiToken });

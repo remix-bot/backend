@@ -99,6 +99,19 @@ export class AuthenticationManager {
     }
     return res.user;
   }
+  /**
+   *
+   * @param {string} token
+   * @returns {Promise<FluxerUser}
+   */
+  async getFluxerUserByToken(token) {
+    const res = await (await this.get(this.fluxerEndpoint + "/oauth2/@me", token)).json();
+    if (!!res.errors) {
+      console.error("Fluxer user fetch error: ", res);
+      return null;
+    }
+    return res.user;
+  }
 
   /**
    *
@@ -137,15 +150,17 @@ export class AuthenticationManager {
   middleware() {
     return async (req, res, next) => {
       if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized" });
-
+      console.log("auth ", req.session);
         // TODO: stoat for now, fluxer needs handling as well
-      const stoatUser = await this.redis.stoat.users.getOrFetchUser(req.session.user);
+      /*const stoatUser = await this.redis.stoat.users.getOrFetchUser(req.session.user);
+      const fluxerUser = await this.redis.fluxer.users.getOrFetchUser(req.session.user);*/
       req.data = {
-        users: {
+        /*users: { // TODO: concurrent logged in accounts
           stoat: stoatUser
-        },
-        user: stoatUser // TODO: switch based on current preferred platform
+          },*/
+        user: (req.session.type === "stoat") ? await this.redis.stoat.users.getOrFetchUser(req.session.user) : await this.redis.fluxer.users.getOrFetchUser(req.session.user) // TODO: switch based on current preferred platform
       };
+      console.log("done", req.data);
       next();
     }
   }

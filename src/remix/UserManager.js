@@ -176,6 +176,7 @@ export class UserManager {
 export class FluxerUserManager extends UserManager {
   async getOrFetchUser(id) {
     const user = this.cache.get(id) || new User(id, this);
+    console.log("fetching");
     const data = await this.platform.cacheExtraneous({
       type: "user",
       key: id,
@@ -184,6 +185,11 @@ export class FluxerUserManager extends UserManager {
       const auth = this.platform.getAuthManager();
       return await auth.getFluxerUser(data.key);
     });
+    data.avatar = {
+      url: `https://fluxerusercontent.com/avatars/${data.id}/${data.avatar}.webp`,
+    };
+    data.displayName = data.global_name;
+
     user.deserialise(data);
     this.cache.set(id, user);
     return user;
