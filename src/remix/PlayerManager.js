@@ -12,10 +12,12 @@ export class PlayerManager {
     this.redis = redis;
     this.platform = platform;
 
+    if (this.redis.connected) return this.initChannels();
     this.redis.on("ready", this.initChannels.bind(this));
   }
 
   async initChannels() {
+    console.log("initCannels");
     /** @type {SerialisedPlayer[]} */
     const data = await this.redis.request({
       type: "fetchPlayers"

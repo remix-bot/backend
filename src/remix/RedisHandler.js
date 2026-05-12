@@ -91,7 +91,7 @@ export class RedisHandler extends EventEmitter {
 
       this.subscribe("info", (m) => {
         const data = JSON.parse(m);
-        if (data.platform !== "stoat") return; // for now
+        if (!["stoat", "fluxer"].includes(data.platform)) return; // for now
         if (data.type !== "connected") return;
         this.emit("ready");
       });
@@ -373,8 +373,12 @@ export class Fluxer extends Platform {
    * @returns {Promise<Object>}
    */
   get(type, key, accessor, noCache = false) {
-    if (type === "user") {
-      // TODO: get user object via auth manager and cache
+    if (type === "sharedServers") {
+      return this.cacheExtraneous({
+        key: key, type: type, accessor: accessor, noCache
+      }, async (data) => {
+        return await this.getAuthManager().fetchMutualServersFluxer(data.key);
+      });
     }
     return this.redis.get({ platform: "fluxer", key: key, type: type, accessor, noCache });
   }

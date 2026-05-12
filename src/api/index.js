@@ -11,6 +11,10 @@ import { RedisStore } from "connect-redis";
 import { FluxerAuth } from "../auth/FluxerAuth.js";
 import { AuthenticationManager } from "../auth/AuthenticationManager.js";
 
+/**
+ * @typedef {import("../remix/RedisHandler.js").Platform} Platform
+ */
+
 export class APIServer {
   /**
    * @param {Object} config
@@ -146,7 +150,7 @@ export class APIServer {
       res.send(this.redis.stoat.commands);
     });
     this.app.get("/connectioncheck", async (req, res) => {
-      res.status(200).send(await this.redis.stoat.call("testConnection"));
+      res.status(200).send(await req.data.platform.call("testConnection"));
     });
 
     const auth = new Router();
@@ -189,17 +193,17 @@ export class APIServer {
       });
     });
     this.secured.get("/player/:channel", async (req, res) => {
-      const player = this.redis.stoat.players.get(req.params.channel); // TODO: move to general platform call
+      const player = req.data.platform.players.get(req.params.channel); // TODO: move to general platform call
       if (!player) return res.status(404).send({ error: "Player not found" });
       if (!player.users.find(u => u === req.data.user.id)) return res.status(401).send({ error: "Unauthorized" });
       res.status(200).send(player.serialise());
     });
-    this.secured.get("/servers", async (req, res) => {
+    this.secured.get("/servers", /** @param {Object} req @param {Object} req.data @param {Platform} req.data.platform */ async (req, res) => {
       const servers = await req.data.platform.get("sharedServers", req.data.user.id);
       res.status(200).send(servers);
     });
     this.secured.get("/server/:id/channels", async (req, res) => {
-      const server = await this.redis.stoat.get("server", req.params.id, req.data.user.id);
+      const server = await req.data.platform.get("server", req.params.id, req.data.user.id);
       res.status(200).send(server?.channels || server);
     });
 
@@ -219,7 +223,7 @@ export class APIServer {
     this.secured.post("/dashboard/control", async (req, res) => {
       if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });
       if (!["pausePlayback", "skip", "resumePlayback", "volume"].includes(req.body.action)) return res.status(400).send({ message: "Invalid action" });
-      const r = await this.redis.stoat.call(req.body.action, {
+      const r = await req.data.platform.call(req.body.action, {
         user: req.data.user.id,
         player: req.data.user.connectedTo[0],
         volume: req.body.volume
@@ -230,7 +234,7 @@ export class APIServer {
       if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });
       const type = (req.body.query.startsWith("remix://radio/")) ? "radio" : "video";
       const query = (type === "radio") ? req.body.query.slice("remix://radio/".length) : req.body.query;
-      const r = await this.redis.stoat.call("addToQueue", {
+      const r = await req.data.platform.call("addToQueue", {
         user: req.data.user.id,
         player: req.data.user.connectedTo[0],
         type: type,

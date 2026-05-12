@@ -117,6 +117,31 @@ export class AuthenticationManager {
   }
 
   /**
+   * @param {string} user
+   * @returns {Promise<{ id: "string", nick: "string" } | null>}
+   */
+  async fetchMutualServersFluxer(user) {
+    const servers = await this.redis.fluxer.get("allServers", "*", "", true);
+    const token = await this.getFluxerAuthToken(user);
+    const res = await (await this.get(this.fluxerEndpoint + "/users/@me/guilds", token)).json();
+    if (!!res.errors) {
+      console.error("Fluxer user fetch error: ", res);
+      return null;
+    }
+    return res.map(e => this.normaliseFluxerServer(e));
+  }
+
+  /**
+   *
+   * @param {*} server Normalises in-place
+   */
+  normaliseFluxerServer(server) {
+    server.icon = `https://fluxerusercontent.com/icons/${server.id}/${server.icon}.webp`;
+    server.ownerId = server.owner_id;
+    return server;
+  }
+
+  /**
    *
    * @param {string} url
    * @param {string} bearer Bearer Auth Token
