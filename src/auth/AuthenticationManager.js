@@ -6,6 +6,9 @@ import { RedisManager } from "../remix/RedisHandler.js";
  * @typedef {import("express").Response} Response
  * @typedef {import("express").RequestHandler} RequestHandler
  */
+ /**
+  * @typedef {import("../remix/RedisHandler.js").PlatformString} PlatformString
+  */
 
  /**
   * @typedef {AuthenticatedRequest}
@@ -154,14 +157,29 @@ export class AuthenticationManager {
         // TODO: stoat for now, fluxer needs handling as well
       /*const stoatUser = await this.redis.stoat.users.getOrFetchUser(req.session.user);
       const fluxerUser = await this.redis.fluxer.users.getOrFetchUser(req.session.user);*/
+      const platform = this.selectPlatform(req.session.type);
       req.data = {
         /*users: { // TODO: concurrent logged in accounts
           stoat: stoatUser
           },*/
-        user: (req.session.type === "stoat") ? await this.redis.stoat.users.getOrFetchUser(req.session.user) : await this.redis.fluxer.users.getOrFetchUser(req.session.user) // TODO: switch based on current preferred platform
+        user: await platform.users.getOrFetchUser(req.session.user), // TODO: switch based on current preferred platform
+        platform: platform
       };
       console.log("done", req.data);
       next();
+    }
+  }
+  /**
+   * @param {PlatformString} identifier
+   */
+  selectPlatform(identifier) {
+    switch (identifier) {
+      case "stoat":
+        return this.redis.stoat;
+      case "fluxer":
+        return this.redis.fluxer;
+      default:
+        return this.redis.stoat;
     }
   }
 }

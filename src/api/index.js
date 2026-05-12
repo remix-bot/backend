@@ -189,13 +189,13 @@ export class APIServer {
       });
     });
     this.secured.get("/player/:channel", async (req, res) => {
-      const player = this.redis.stoat.players.get(req.params.channel);
+      const player = this.redis.stoat.players.get(req.params.channel); // TODO: move to general platform call
       if (!player) return res.status(404).send({ error: "Player not found" });
       if (!player.users.find(u => u === req.data.user.id)) return res.status(401).send({ error: "Unauthorized" });
       res.status(200).send(player.serialise());
     });
     this.secured.get("/servers", async (req, res) => {
-      const servers = await this.redis.stoat.get("sharedServers", req.data.user.id);
+      const servers = await req.data.platform.get("sharedServers", req.data.user.id);
       res.status(200).send(servers);
     });
     this.secured.get("/server/:id/channels", async (req, res) => {
