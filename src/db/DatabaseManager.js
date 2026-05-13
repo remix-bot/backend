@@ -181,6 +181,7 @@ export class DatabaseManager {
   }
   async storeFluxerAccessToken(user, data) {
     try {
+      await this.execute("DELETE FROM fluxer_auth WHERE user=?", [user]);
       const res = await this.execute("INSERT INTO fluxer_auth (user, token, expires, refresh, scope) VALUES (?, ?, ?, ?, ?)", [
         user, data.token, data.expires, data.refreshToken, data.scope
       ]);
