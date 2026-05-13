@@ -154,7 +154,7 @@ export class RedisHandler extends EventEmitter {
    * @param {string} platform Identifier of the client that should reply
    * @returns {Promise<T | { error: string }>}
    */
-  async request(data, platform) {
+  async request(data, platform) { // TODO: Implement timeouts
     const content = data;
     return new Promise(async res => {
       const id = this.currId++;

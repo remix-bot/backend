@@ -96,9 +96,10 @@ export class AuthenticationManager {
       key: user
     }, async (data) => {
       const token = await this.db.getFluxerAccessToken(data.key);
+      if (!token) return null;
       const expiryTime = new Date(token.expiry);
-      if (new Date() > expiryTime) {
-        return await this.refreshAuthToken(data.key, refreshToken);
+      if ((new Date()).getTime() > expiryTime.getTime()) {
+        return await this.refreshAuthToken(data.key, token.refreshToken);
       }
       return token.token;
     });

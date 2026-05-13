@@ -190,7 +190,7 @@ export class DatabaseManager {
       return {
         token: res[0].token,
         refresh: res[0].refresh,
-        expiry: res[0].expires
+        expiry: res[0].expires * 1000
       };
     } catch (e) {
       console.error("SELECT fluxer_auth: ", user, e);
