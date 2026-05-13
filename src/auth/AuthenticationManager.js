@@ -68,7 +68,7 @@ export class AuthenticationManager {
       if (!data.valid) return false;
       req.session.user = data.user;
       req.session.verified = true;
-      req.session.type = "stoat";
+      req.session.type = data.platform;
       return true;
     }
     if (!(await this.db.verifyLoginCode(req.session.user, req.session.code))) return false;
