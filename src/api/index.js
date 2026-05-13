@@ -105,7 +105,7 @@ export class APIServer {
     this.db = new DatabaseManager(config.mysql);
 
     this.sockets = new SocketHandler(this.server, this.redis, this.db);
-    this.auth = new AuthenticationManager(this.redis, this.db);
+    this.auth = new AuthenticationManager(this.redis, this.db, this.config.fluxer);
     this.redis.setAuthManager(this.auth);
 
     this.setupPublic();

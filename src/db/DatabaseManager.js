@@ -180,14 +180,18 @@ export class DatabaseManager {
 
   /**
    * @param {string} user
-   * @returns {Promise<string | null>}
+   * @returns {Promise<{ token: string, refresh: string, expiry: number } | null>}
    */
   async getFluxerAccessToken(user) {
     try {
       const res = await this.execute("SELECT * FROM fluxer_auth WHERE user=? ORDER BY expires DESC LIMIT 1", [user]);
       if (res.length == 0) return null;
       // TODO: possibly refresh the token if adequate
-      return res[0].token;
+      return {
+        token: res[0].token,
+        refresh: res[0].refresh,
+        expiry: res[0].expires
+      };
     } catch (e) {
       console.error("SELECT fluxer_auth: ", user, e);
     }

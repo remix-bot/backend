@@ -46,10 +46,15 @@ export class AuthenticationManager {
    *
    * @param {RedisManager} redis
    * @param {DatabaseManager} db
+   * @param {Object} config
+   * @param {string} config.id
+   * @param {string} config.secret
+   * @param {string} config.redirectUri
    */
-  constructor(redis, db) {
+  constructor(redis, db, config) {
     this.redis = redis;
     this.db = db;
+    this.config = config;
   }
 
   /**
@@ -89,7 +94,46 @@ export class AuthenticationManager {
       platform: "fluxer",
       type: "access_token",
       key: user
-    }, async (data) => this.db.getFluxerAccessToken(data.key));
+    }, async (data) => {
+      const token = await this.db.getFluxerAccessToken(data.key);
+      const expiryTime = new Date(token.expiry);
+      if (new Date() > expiryTime) {
+        return await this.refreshAuthToken(data.key, refreshToken);
+      }
+      return token.token;
+    });
+  }
+  /**
+   * @param {string} user
+   * @param {string} refreshToken
+   */
+  async refreshAuthToken(user, refreshToken) {
+    try {
+      const body = new URLSearchParams({
+        "grant_type": "refresh_token",
+        "refresh_token": refreshToken,
+        "client_id": this.config.id,
+        "client_secret": this.config.secret
+      });
+      const res = await (await fetch(this.fluxerEndpoint + "/oauth2/token", {
+        method: "POST",
+        body
+      })).json();
+      console.log(res);
+      if (!res.access_token) return null;
+      const data = {
+        token: res.access_token,
+        refreshToken: res.refresh_token,
+        tokenType: res.token_type,
+        expires: (Date.now() / 1000) + res.expires_in,
+        scope: res.scope
+      };
+      await this.db.storeFluxerAccessToken(user, data);
+      return data.token;
+    } catch (e) {
+      console.error("Fluxer refresh error: ", e);
+      return null;
+    }
   }
 
   /**
