@@ -144,6 +144,20 @@ export class DatabaseManager {
     }
   }
   /**
+   * @param {string} id
+   */
+  async deleteAPIToken(id) {
+    try {
+      const res = await this.execute("DELETE FROM api_tokens WHERE id=?", [
+        id
+      ]);
+      return true;
+    } catch (e) {
+      console.error("DELETE FROM api_tokens:", e);
+      return false;
+    }
+  }
+  /**
    * @param {string} userId
    * @param {string} code
    * @returns {Promise<boolean>}

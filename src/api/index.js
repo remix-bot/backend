@@ -158,30 +158,9 @@ export class APIServer {
 
     this.app.use("/auth", auth);
   }
-  /**
-   * @param {Request} req
-   * @returns {Promise<boolean>}
-   */
-   /*async verifySession(req) {
-    if (req.session.fluxerVerified) return true;
-    if (req.session.verified) return true;
-    if (!req.session.code || !req.session.user) {
-      const token = req.headers.token;
-      const id = req.headers.tokenid;
-      if (!token || !id) return false;
-      const data = await this.db.verifyAPIToken(token, id);
-      if (!data.valid) return false;
-      req.session.user = data.user;
-      req.session.verified = true;
-      req.session.type = "stoat";
-      return true;
-    }
-    if (!(await this.db.verifyLoginCode(req.session.user, req.session.code))) return false;
-    req.session.verified = true;
-    req.session.type = "stoat";
-    return true;
-  }*/
+
   setupSecure() {
+    /** @type {Router} */
     this.secured = new Router();
     this.secured.use(this.auth.middleware());
     this.app.use(this.secured);
@@ -192,8 +171,15 @@ export class APIServer {
         accountType: req.session.type
       });
     });
+    this.secured.post("/logout", async (req, res) => {
+      if (this.auth.logout(req)) {
+        return res.status(200).send({ message: "Logged out." });
+      }
+      res.status(500).send({ error: "An error occured." });
+    });
+
     this.secured.get("/player/:channel", async (req, res) => {
-      const player = req.data.platform.players.get(req.params.channel); // TODO: move to general platform call
+      const player = req.data.platform.players.get(req.params.channel);
       if (!player) return res.status(404).send({ error: "Player not found" });
       if (!player.users.find(u => u === req.data.user.id)) return res.status(401).send({ error: "Unauthorized" });
       res.status(200).send(player.serialise());

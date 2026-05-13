@@ -66,6 +66,8 @@ export class AuthenticationManager {
       if (!token || !id) return false;
       const data = await this.db.verifyAPIToken(token, id);
       if (!data.valid) return false;
+
+      req.session.tokenId = id;
       req.session.user = data.user;
       req.session.verified = true;
       req.session.type = data.platform;
@@ -169,6 +171,15 @@ export class AuthenticationManager {
     req.session.verified = false;
 
     return token;
+  }
+
+  /**
+   * @param {Request} req
+   */
+  async logout(req) {
+    const success = await this.db.deleteAPIToken(req.session.tokenId);
+    req.session.verified = false;
+    return success;
   }
 
   /**
