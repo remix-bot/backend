@@ -134,7 +134,7 @@ export class APIServer {
       if (!user) {
         return res.status(400).send({ message: "Invalid user data" });
       }
-      const token = await this.auth.initiateLogin(user);
+      const token = await this.auth.initiateLogin(user, req);
       res.status(200).send({ code: token, user });
     });
     this.app.get("/login/code", (req, res) => {
