@@ -173,9 +173,9 @@ export class AuthenticationManager {
     const servers = await this.redis.fluxer.get("allServers", "*", "", true);
     const token = await this.getFluxerAuthToken(user);
     const res = await (await this.get(this.fluxerEndpoint + "/users/@me/guilds", token)).json();
-    if (!!res.errors) {
-      console.error("Fluxer user fetch error: ", res);
-      return null;
+    if (!!res.errors || !Array.isArray(res)) {
+      console.error("Fluxer mutual server fetch: ", res, user);
+      return [];
     }
     const mutual = res.filter(e => servers.findIndex(s => s.id === e.id) !== -1);
     const promises = mutual.map(e => this.fetchServerChannels(user, e.id));
@@ -211,9 +211,9 @@ export class AuthenticationManager {
    */
   async fetchServerChannels(guild) {
     const res = await (await this.getBot(this.fluxerEndpoint + `/guilds/${guild}/channels`, this.config.botToken)).json();
-    if (!!res.errors) {
-      console.error("Fluxer user fetch error: ", res);
-      return null;
+    if (!!res.errors || !Array.isArray(res)) {
+      console.error("Fluxer server channel fetch: ", res, guild);
+      return [];
     }
     return res.map(e => this.normaliseFluxerChannel(e));
   }
