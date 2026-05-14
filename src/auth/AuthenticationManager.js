@@ -178,7 +178,7 @@ export class AuthenticationManager {
       return [];
     }
     const mutual = res.filter(e => servers.findIndex(s => s.id === e.id) !== -1);
-    const promises = mutual.map(e => this.fetchServerChannels(user, e.id));
+    const promises = mutual.map(e => this.fetchServerChannels(e.id));
     const done = await Promise.all(promises);
     return mutual.map((e, i) => this.normaliseFluxerServer(e, done[i]));
   }
