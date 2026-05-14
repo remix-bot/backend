@@ -202,6 +202,11 @@ export class Socket extends EventEmitter {
           this.socket.close(3000, "Invalid authentication.");
           return;
         }
+        if (res.platform !== this.platform.identifier) {
+          if (!this.closeTimeout) clearTimeout(this.closeTimeout);
+          this.socket.close(3000, "API-key-bound platform mismatches endpoint.");
+          return;
+        }
 
         this.delayClose();
 
@@ -217,6 +222,7 @@ export class Socket extends EventEmitter {
       default: // ping to keep the connection open
         if (!this.authenticated) return;
         this.delayClose();
+        this.socket.send(JSON.stringify({ op: OP[2], data: {} }));
         break;
     }
   }

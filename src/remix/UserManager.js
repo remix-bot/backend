@@ -186,7 +186,7 @@ export class FluxerUserManager extends UserManager {
       return await auth.getFluxerUser(data.key);
     });
     data.avatar = {
-      url: `https://fluxerusercontent.com/avatars/${data.id}/${data.avatar}.webp`,
+      url: `${this.platform.getAuthManager().fluxerMediaEndpoint}/avatars/${data.id}/${data.avatar}.webp`,
     };
     data.displayName = data.global_name;
 

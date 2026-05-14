@@ -42,6 +42,7 @@ export class AuthenticationManager {
   userCredentials = new Map();
 
   fluxerEndpoint = "https://api.fluxer.app/v1";
+  fluxerMediaEndpoint = "https://fluxerusercontent.com";
   /**
    *
    * @param {RedisManager} redis
@@ -50,6 +51,7 @@ export class AuthenticationManager {
    * @param {string} config.id
    * @param {string} config.secret
    * @param {string} config.redirectUri
+   * @param {string} config.botToken
    */
   constructor(redis, db, config) {
     this.redis = redis;
@@ -175,17 +177,45 @@ export class AuthenticationManager {
       console.error("Fluxer user fetch error: ", res);
       return null;
     }
-    return res.map(e => this.normaliseFluxerServer(e));
+    const mutual = res.filter(e => servers.findIndex(s => s.id === e.id) !== -1);
+    const promises = mutual.map(e => this.fetchServerChannels(user, e.id));
+    const done = await Promise.all(promises);
+    return mutual.map((e, i) => this.normaliseFluxerServer(e, done[i]));
   }
 
   /**
    *
    * @param {*} server Normalises in-place
+   * @param {any[]} [channels] If provided, will add also process channel api objects
    */
-  normaliseFluxerServer(server) {
-    server.icon = `https://fluxerusercontent.com/icons/${server.id}/${server.icon}.webp`;
+  normaliseFluxerServer(server, channels) {
+    server.icon = `${this.fluxerMediaEndpoint}/icons/${server.id}/${server.icon}.webp`;
     server.ownerId = server.owner_id;
+    if (channels) {
+      server.channelIds = channels.map(c => c.id);
+      server.voiceChannels = channels.filter(c => c.isVoice);
+    } else {
+      server.channelIds = [];
+      server.voiceChannels = [];
+    }
     return server;
+  }
+  normaliseFluxerChannel(channel) {
+    channel.icon = `${this.fluxerMediaEndpoint}/icons/${channel.id}/${channel.icon}.webp`;
+    channel.isVoice = channel.type === 2;
+    return channel;
+  }
+
+  /**
+   * @param {string} guild guild id
+   */
+  async fetchServerChannels(guild) {
+    const res = await (await this.getBot(this.fluxerEndpoint + `/guilds/${guild}/channels`, this.config.botToken)).json();
+    if (!!res.errors) {
+      console.error("Fluxer user fetch error: ", res);
+      return null;
+    }
+    return res.map(e => this.normaliseFluxerChannel(e));
   }
 
   /**
@@ -196,6 +226,19 @@ export class AuthenticationManager {
   get(url, bearer) { // TODO: extend capabilities
     const params = new URLSearchParams();
     params.append("Authorization", "Bearer " + bearer);
+    return fetch(url, {
+      method: "get",
+      headers: params
+    });
+  }
+  /**
+   *
+   * @param {string} url
+   * @param {string} token Bot auth token
+   */
+  getBot(url, token) { // TODO: extend capabilities
+    const params = new URLSearchParams();
+    params.append("Authorization", "Bot " + token);
     return fetch(url, {
       method: "get",
       headers: params
