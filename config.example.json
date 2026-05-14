@@ -1,0 +1,24 @@
+{
+  "ssl": {
+    "useSSL": false
+  },
+  "sessionSecret": "A Secret to secure sessions with",
+  "port": 3000,
+  "frontendOrigin": "http://localhost:8000",
+  "mysql": {
+    "host": "your-host.com",
+    "port": 3306,
+    "user": "username",
+    "password": "password of the user",
+    "database": "a db with the necessary tables. Needs to be shared with stoat for now"
+  },
+  "redis": {
+    "url": "redis://localhost:6379"
+  },
+  "fluxer": {
+    "redirectUri": "http://localhost:3000/auth/fluxer",
+    "id": "yourClientId",
+    "secret": "yourClientSecret",
+    "botToken": "yourFluxerBotToken"
+  }
+}
