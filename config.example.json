@@ -19,6 +19,7 @@
     "redirectUri": "http://localhost:3000/auth/fluxer",
     "id": "yourClientId",
     "secret": "yourClientSecret",
-    "botToken": "yourFluxerBotToken"
+    "botToken": "yourFluxerBotToken",
+    "authorisationUrl": "The authorisation url provided by fluxer, including the 'identify' and 'guilds' scope"
   }
 }

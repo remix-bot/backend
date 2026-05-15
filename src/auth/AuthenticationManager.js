@@ -82,6 +82,7 @@ export class AuthenticationManager {
     }
     if (!(await this.db.verifyLoginCode(req.session.user, req.session.code))) return false;
     req.session.verified = true;
+    req.session.code = undefined;
     req.session.type = "stoat";
     return true;
   }
@@ -257,6 +258,8 @@ export class AuthenticationManager {
     req.session.user = user;
     req.session.code = token;
     req.session.verified = false;
+    req.session.type = "stoat";
+    req.session.authPlatform = "stoat";
 
     return token;
   }
@@ -265,7 +268,11 @@ export class AuthenticationManager {
    * @param {Request} req
    */
   async logout(req) {
-    const success = await this.db.deleteAPIToken(req.session.tokenId);
+    const tId = req.session.tokenId || req.headers.tokenid;
+    var success = false;
+    if (tId) {
+      success = await this.db.deleteAPIToken(tId);
+    }
     req.session.verified = false;
     return success;
   }

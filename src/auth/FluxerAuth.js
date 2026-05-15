@@ -15,6 +15,7 @@ export class FluxerAuth {
    * @param {string} clientConfig.id
    * @param {string} clientConfig.secret
    * @param {string} clientConfig.redirectUri
+   * @param {string} clientConfig.authorisationUrl
    */
   constructor(router, server, redis, clientConfig) {
     this.app = router;
@@ -27,6 +28,10 @@ export class FluxerAuth {
   }
 
   setupRoutes() {
+    this.app.get("/fluxer/authorize", (_req, res) => {
+      res.redirect(this.config.authorisationUrl);
+    });
+
     this.app.get("/fluxer", async (req, res) => {
       const code = req.query.code;
       const error = req.query.error;
