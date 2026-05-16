@@ -203,8 +203,12 @@ export class APIServer {
       res.status(200).send(response);
     });
     this.secured.post("/voice/:id/leave", async (req, res) => {
-      if (!req.params?.id || !req.body.channel) return res.status(400).send({ error: "invalid voice or text channel id" });
-
+      if (!req.params?.id) return res.status(400).send({ error: "invalid voice channel id" });
+      const response = await req.data.platform.call("leave", {
+        channel: req.params.id,
+        user: req.data.user.id
+      });
+      res.status(200).send(response);
     });
     this.secured.post("/dashboard/control", async (req, res) => {
       if (req.data.user.connectedTo.length === 0) return res.status(422).send({ message: "Not in a voice channel" });

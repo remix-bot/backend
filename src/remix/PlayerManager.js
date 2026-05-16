@@ -20,7 +20,6 @@ export class PlayerManager {
   }
 
   async initChannels() {
-    console.log("initCannels");
     /** @type {SerialisedPlayer[]} */
     const data = await this.redis.request({
       type: "fetchPlayers"
@@ -30,7 +29,7 @@ export class PlayerManager {
       this.playerMap.set(p.channel.id, player);
       this.platform.users.onPlayerInit(player.users, player);
     });
-    console.log(this.playerMap);
+    console.log(this.platform.identifier, this.playerMap);
 
     const managerEvent = (m) => {
       const data = JSON.parse(m);
