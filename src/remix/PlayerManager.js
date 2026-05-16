@@ -13,7 +13,10 @@ export class PlayerManager {
     this.platform = platform;
 
     if (this.redis.connected) return this.initChannels();
-    this.redis.on("ready", this.initChannels.bind(this));
+    this.redis.on("platformConnected", (p) => {
+      if (p !== this.platform.identifier) return;
+      this.initChannels();
+    });
   }
 
   async initChannels() {

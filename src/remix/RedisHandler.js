@@ -94,6 +94,7 @@ export class RedisHandler extends EventEmitter {
         if (!["stoat", "fluxer"].includes(data.platform)) return; // for now
         if (data.type !== "connected") return;
         this.emit("ready");
+        this.emit("platformConnected", data.platform);
       });
 
       this.subReady = true;
