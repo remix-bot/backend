@@ -188,14 +188,14 @@ export class APIServer {
       const servers = await req.data.platform.get("sharedServers", req.data.user.id);
       res.status(200).send(servers);
     });
-    this.secured.get("/server/:id/channels", async (req, res) => {
-      const server = await req.data.platform.get("server", req.params.id, req.data.user.id);
+    this.secured.get("/server/:id/channels", /** @param {Object} req @param {Object} req.data @param {Platform} req.data.platform */ async (req, res) => {
+      const server = await req.data.platform.get("server", req.params.id, req.data.user.id, true);
       res.status(200).send(server?.channels || server);
     });
 
     this.secured.post("/voice/:id/join", async (req, res) => {
       if (!req.params?.id || !req.body.text) return res.status(400).send({ error: "invalid voice or text channel id" });
-      const response = await this.redis.stoat.call("join", {
+      const response = await req.data.platform.call("join", {
         channel: req.params.id,
         text: req.body.text,
         user: req.data.user.id
