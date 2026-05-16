@@ -189,7 +189,7 @@ export class APIServer {
       res.status(200).send(servers);
     });
     this.secured.get("/server/:id/channels", /** @param {Object} req @param {Object} req.data @param {Platform} req.data.platform */ async (req, res) => {
-      const server = await req.data.platform.get("server", req.params.id, req.data.user.id, true);
+      const server = await req.data.platform.get("server", req.params.id, req.data.user.id);
       res.status(200).send(server?.channels || server);
     });
 
