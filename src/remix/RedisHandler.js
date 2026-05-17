@@ -53,6 +53,8 @@ export class RedisHandler extends EventEmitter {
   connectionReady = false; // wether the bot is online and can respond
 
   currId = 0;
+
+  REQUEST_TIMEOUT = 5000;
   /**
    *
    * @param {Object} opts
@@ -164,15 +166,22 @@ export class RedisHandler extends EventEmitter {
         content,
         platform,
       }
+      var timeout;
       const subscriber = async (m) => {
         const d = JSON.parse(m);
         if (d.id != id) return;
+        clearTimeout(timeout); // timeout should be set by now, if not errors will show me what to fix
         await this.subscriber.unsubscribe("response", subscriber);
         res(d.content);
       }
       await this.subscriber.subscribe("response", subscriber.bind(this));
 
       await this.client.publish("request", JSON.stringify(payload));
+
+      timeout = setTimeout(async () => {
+        await this.subscriber.unsubscribe("response", subscriber);
+        res({ error: "Request timed out" });
+      }, this.REQUEST_TIMEOUT);
     });
   }
   /**
@@ -216,7 +225,20 @@ export class RedisHandler extends EventEmitter {
       const data = JSON.parse(await this.client.get(key));
       if (data) return data;
     } catch (e) { }
-    const d = await getter(data);
+    const d = await (() => new Promise(async res => {
+      var resolved = false;
+      const timeout = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        res({ error: "Resource request timed out" });
+      }, this.REQUEST_TIMEOUT);
+      getter(data).then(r => {
+        if (resolved) return;
+        clearTimeout(timeout);
+        resolved = true;
+        res(r);
+      });
+    }))();
     if (d && !data.noCache) {
       if (d.error) return d; // don't cache in case of any errors
       await this.client.set(key, JSON.stringify(d), {
@@ -298,6 +320,10 @@ export class Platform {
   get identifier() {
     return this.#fail();
   }
+  /** @type {boolean} */
+  get connected() {
+    return this.#fail;
+  }
   /**
    * @param {string} type
    * @param {string} key
@@ -346,7 +372,10 @@ export class Fluxer extends Platform {
 
     this.redis = redis;
     this.auth = auth;
-    this.redis.on("ready", async () => {
+    this.ready = false;
+    this.redis.on("platformConnected", async (p) => {
+      if (p !== this.identifier) return;
+      this.ready = true;
       this.commands = await this.get("commands", "*"); // TODO: verify on fluxer
     });
     this.players = new PlayerManager(this.redis, this);
@@ -358,6 +387,10 @@ export class Fluxer extends Platform {
   }
   get channelPrefix() {
     return "fluxer:";
+  }
+
+  get connected() {
+    return this.ready;
   }
 
   getAuthManager() {
@@ -434,7 +467,10 @@ export class Stoat extends Platform {
     super();
 
     this.redis = redis;
-    this.redis.on("ready", async () => {
+    this.ready = false;
+    this.redis.on("platformConnected", async (p) => {
+      if (p !== this.identifier) return;
+      this.ready = true;
       this.commands = await this.get("commands", "*");
     });
     this.players = new PlayerManager(redis, this);
@@ -445,6 +481,9 @@ export class Stoat extends Platform {
   }
   get identifier() {
     return "stoat";
+  }
+  get connected() {
+    return this.ready;
   }
   /**
    * @param {string} type

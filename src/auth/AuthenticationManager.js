@@ -284,11 +284,19 @@ export class AuthenticationManager {
   middleware() {
     return async (req, res, next) => {
       if (!(await this.verifySession(req))) return res.status(403).send({ error: "Unauthorized" });
-      console.log("auth ", req.session);
         // TODO: stoat for now, fluxer needs handling as well
       /*const stoatUser = await this.redis.stoat.users.getOrFetchUser(req.session.user);
       const fluxerUser = await this.redis.fluxer.users.getOrFetchUser(req.session.user);*/
       const platform = this.selectPlatform(req.session.type);
+      if (!platform.connected) {
+        req.data = {
+          user: null,
+          disconnected: true,
+          platform: platform
+        }
+        return next();
+      }
+      console.log("auth ", req.session);
       req.data = {
         /*users: { // TODO: concurrent logged in accounts
           stoat: stoatUser

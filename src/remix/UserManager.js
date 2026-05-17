@@ -152,6 +152,7 @@ export class UserManager {
     const user = this.cache.get(id) || new User(id, this);
     const data = await this.platform.get("user", id);
     user.deserialise(data);
+    if (data.error) return user;
     this.cache.set(id, user);
     return user;
   }
@@ -185,6 +186,7 @@ export class FluxerUserManager extends UserManager {
       const auth = this.platform.getAuthManager();
       return await auth.getFluxerUser(data.key);
     });
+    if (data.error) return user;
     data.avatar = {
       url: `${this.platform.getAuthManager().fluxerMediaEndpoint}/avatars/${data.id}/${data.avatar}.webp`,
     };

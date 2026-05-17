@@ -167,8 +167,9 @@ export class APIServer {
 
     this.secured.get("/info", async (req, res) => {
       res.status(200).send({
-        user: req.data.user.serialise(),
-        accountType: req.session.type
+        user: req.data.user?.serialise(),
+        accountType: req.session.type,
+        platformConnected: !req.data.disconnected
       });
     });
     this.secured.post("/logout", async (req, res) => {
