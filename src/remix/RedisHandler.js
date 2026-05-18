@@ -373,6 +373,10 @@ export class Fluxer extends Platform {
     this.redis = redis;
     this.auth = auth;
     this.ready = false;
+    this.lastPing = 0;
+    this.redis.subscribe(this.channelPrefix + "ping", () => {
+      this.lastPing = Date.now();
+    });
     this.redis.on("platformConnected", async (p) => {
       if (p !== this.identifier) return;
       this.ready = true;
@@ -390,7 +394,7 @@ export class Fluxer extends Platform {
   }
 
   get connected() {
-    return this.ready;
+    return this.ready && (this.lastPing + 30 * 1000) >= Date.now();
   }
 
   getAuthManager() {
@@ -468,6 +472,10 @@ export class Stoat extends Platform {
 
     this.redis = redis;
     this.ready = false;
+    this.lastPing = 0;
+    this.redis.subscribe(this.channelPrefix + "ping", () => {
+      this.lastPing = Date.now();
+    });
     this.redis.on("platformConnected", async (p) => {
       if (p !== this.identifier) return;
       this.ready = true;
@@ -483,7 +491,7 @@ export class Stoat extends Platform {
     return "stoat";
   }
   get connected() {
-    return this.ready;
+    return this.ready && (this.lastPing + 30 * 1000) >= Date.now();
   }
   /**
    * @param {string} type
