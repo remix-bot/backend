@@ -376,11 +376,17 @@ export class Fluxer extends Platform {
     this.lastPing = 0;
     this.redis.subscribe(this.channelPrefix + "ping", () => {
       this.lastPing = Date.now();
+      if (!this.ready) {
+        this.ready = true;
+        this.get("commands", "*").then(c => { this.commands = c; }).catch(() => {});
+      }
     });
     this.redis.on("platformConnected", async (p) => {
       if (p !== this.identifier) return;
       this.ready = true;
-      this.commands = await this.get("commands", "*"); // TODO: verify on fluxer
+      try {
+        this.commands = await this.get("commands", "*");
+      } catch (_) {}
     });
     this.players = new PlayerManager(this.redis, this);
     this.users = new FluxerUserManager(this);
@@ -394,7 +400,7 @@ export class Fluxer extends Platform {
   }
 
   get connected() {
-    return this.ready && (this.lastPing + 30 * 1000) >= Date.now();
+    return (this.ready || this.lastPing > 0) && (this.lastPing + 30 * 1000) >= Date.now();
   }
 
   getAuthManager() {

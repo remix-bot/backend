@@ -41,7 +41,7 @@ export class AuthenticationManager {
   /** @type {Map<string, UserCredentials>} */
   userCredentials = new Map();
 
-  fluxerEndpoint = "https://api.fluxer.app/v1";
+  fluxerEndpoint = "https://fluxer.com/api/v1";
   fluxerMediaEndpoint = "https://fluxerusercontent.com";
   /**
    *

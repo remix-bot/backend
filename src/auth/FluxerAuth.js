@@ -87,7 +87,7 @@ export class FluxerAuth {
         "client_id": this.config.id,
         "client_secret": this.config.secret,
       })
-      const res = await (await fetch("https://api.fluxer.app/v1/oauth2/token", {
+      const res = await (await fetch("https://fluxer.com/api/v1/oauth2/token", {
         method: "POST",
         body
       })).json();
