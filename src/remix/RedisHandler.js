@@ -481,11 +481,17 @@ export class Stoat extends Platform {
     this.lastPing = 0;
     this.redis.subscribe(this.channelPrefix + "ping", () => {
       this.lastPing = Date.now();
+      if (!this.ready) {
+        this.ready = true;
+        this.get("commands", "*").then(c => { this.commands = c; }).catch(() => {});
+      }
     });
     this.redis.on("platformConnected", async (p) => {
       if (p !== this.identifier) return;
       this.ready = true;
-      this.commands = await this.get("commands", "*");
+      try {
+        this.commands = await this.get("commands", "*");
+      } catch (_) {}
     });
     this.players = new PlayerManager(redis, this);
     this.users = new UserManager(this);
@@ -497,7 +503,7 @@ export class Stoat extends Platform {
     return "stoat";
   }
   get connected() {
-    return this.ready && (this.lastPing + 30 * 1000) >= Date.now();
+    return (this.ready || this.lastPing > 0) && (this.lastPing + 30 * 1000) >= Date.now();
   }
   /**
    * @param {string} type

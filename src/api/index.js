@@ -60,15 +60,54 @@ export class APIServer {
     this.config = config;
 
     this.redis = new RedisManager(config);
-    const redisStore = new RedisStore({
-      client: this.redis.handler.client,
-      prefix: "backend-session:"
-    });
+    const memoryStore = new session.MemoryStore();
+    let redisStore = null;
+    try {
+      redisStore = new RedisStore({
+        client: this.redis.handler.client,
+        prefix: "backend-session:"
+      });
+    } catch (e) {
+      console.warn("[Session] Could not init RedisStore:", e.message);
+    }
+
+    const self = this;
+    class AdaptiveStore extends session.Store {
+      constructor() {
+        super();
+      }
+      get(sid, cb) {
+        if (self.redis.handler.clientReady && redisStore) {
+          return redisStore.get(sid, cb);
+        }
+        return memoryStore.get(sid, cb);
+      }
+      set(sid, sess, cb) {
+        if (self.redis.handler.clientReady && redisStore) {
+          return redisStore.set(sid, sess, cb);
+        }
+        return memoryStore.set(sid, sess, cb);
+      }
+      destroy(sid, cb) {
+        if (self.redis.handler.clientReady && redisStore) {
+          return redisStore.destroy(sid, cb);
+        }
+        return memoryStore.destroy(sid, cb);
+      }
+      touch(sid, sess, cb) {
+        if (self.redis.handler.clientReady && redisStore?.touch) {
+          return redisStore.touch(sid, sess, cb);
+        }
+        if (memoryStore.touch) return memoryStore.touch(sid, sess, cb);
+        cb?.();
+      }
+    }
+
     this.ses = session({
-      store: redisStore,
+      store: new AdaptiveStore(),
       saveUninitialized: false,
       secret: config.sessionSecret || "testsecret",
-      resave: "false",
+      resave: false,
       cookie: {
         secure: "auto"
       }
@@ -117,11 +156,11 @@ export class APIServer {
    * @returns {Promise<string>}
    */
   async getUserId(d) {
-    if (!d) return;
-    if (d.length !== 26) return null; // too short
-    if (!d.match(/[0-9A-Z]{26}/g)) return null;
-    // TODO: fetch users from remix and cache them
-    return d;
+    if (!d || typeof d !== "string") return null;
+    const trimmed = d.trim();
+    if (trimmed.match(/^[0-9A-Z]{26}$/)) return trimmed;
+    if (trimmed.match(/^\d{17,21}$/)) return trimmed;
+    return null;
   }
 
   setupPublic() {
@@ -147,10 +186,29 @@ export class APIServer {
       res.send({ verified: true, token: apiToken });
     });
     this.app.get("/commands", (req, res) => {
-      res.send(this.redis.stoat.commands);
+      const platform = req.query?.platform?.toString()?.toLowerCase() || req.session?.type?.toLowerCase();
+      let cmds = [];
+      if (platform === "fluxer") {
+        cmds = this.redis?.fluxer?.commands?.length ? this.redis.fluxer.commands : (this.redis?.stoat?.commands || []);
+      } else if (platform === "stoat") {
+        cmds = this.redis?.stoat?.commands?.length ? this.redis.stoat.commands : (this.redis?.fluxer?.commands || []);
+      } else {
+        cmds = (this.redis?.fluxer?.commands?.length ? this.redis.fluxer.commands : null) || this.redis?.stoat?.commands || [];
+      }
+      res.status(200).json(cmds || []);
     });
     this.app.get("/connectioncheck", async (req, res) => {
-      res.status(200).send(await req.data.platform.call("testConnection"));
+      const platformName = req.query?.platform?.toString()?.toLowerCase() || req.session?.type?.toLowerCase();
+      const platform = platformName === "stoat" ? this.redis.stoat : this.redis.fluxer;
+      if (!platform || !platform.connected) {
+        return res.status(200).send({ connected: false, error: "Platform not connected" });
+      }
+      try {
+        const response = await platform.call("testConnection");
+        return res.status(200).send(response);
+      } catch (e) {
+        return res.status(500).send({ connected: false, error: e.message });
+      }
     });
 
     const auth = new Router();

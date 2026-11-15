@@ -182,7 +182,7 @@ export class Player extends EventEmitter {
   /** @type {string[]} */
   users;
   /**
-   * @param {Stoat} platform
+   * @param {Platform} platform
    * @param {string} channelId redis channel suffix
    */
   constructor(platform, channelId) {

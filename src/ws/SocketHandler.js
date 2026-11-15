@@ -34,7 +34,8 @@ export class SocketHandler {
    * @param {Request} request
    */
   handleConnection(s, request) {
-    const path = request.url.split("/")[request.url.split("/").length - 1];
+    const rawPath = request.url.split("?")[0].replace(/\/+$/, "").split("/").pop() || "";
+    const path = rawPath.toLowerCase();
 
     var handler;
     switch (path) {
@@ -202,7 +203,7 @@ export class Socket extends EventEmitter {
           this.socket.close(3000, "Invalid authentication.");
           return;
         }
-        if (res.platform !== this.platform.identifier) {
+        if (res.platform?.toLowerCase() !== this.platform.identifier?.toLowerCase()) {
           if (!this.closeTimeout) clearTimeout(this.closeTimeout);
           this.socket.close(3000, "API-key-bound platform mismatches endpoint.");
           return;

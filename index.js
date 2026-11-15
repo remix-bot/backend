@@ -3,7 +3,8 @@ import * as fs from "node:fs";
 
 class Dashboard {
   constructor() {
-    const config = JSON.parse(fs.readFileSync("./config.json"));
+    const configPath = new URL("./config.json", import.meta.url);
+    const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     this.server = new APIServer(config);
   }
 }
