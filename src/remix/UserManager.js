@@ -118,8 +118,11 @@ export class UserManager {
   onPlayerInit(users, p) {
     console.log("playerInit");
     console.log(users);
+    if (!Array.isArray(users)) return;
     users.forEach(u => {
-      const user = this.getUser(u);
+      const uid = typeof u === "string" ? u : u?.id;
+      if (!uid) return;
+      const user = this.getUser(uid);
       if (!user) return;
       user.handleUpdate({
         type: "join",
@@ -128,8 +131,11 @@ export class UserManager {
     });
   }
   onPlayerClose(users, p) {
+    if (!Array.isArray(users)) return;
     users.forEach(u => {
-      const user = this.cache.get(u.id);
+      const uid = typeof u === "string" ? u : u?.id;
+      if (!uid) return;
+      const user = this.cache.get(uid);
       if (!user) return;
       user.handleUpdate({
         type: "leave",
@@ -175,8 +181,17 @@ export class UserManager {
 }
 
 export class FluxerUserManager extends UserManager {
+  getUser(id) {
+    if (this.cache.has(id)) return this.cache.get(id);
+
+    const user = new User(id, this);
+    user.type = "fluxer";
+    this.cache.set(id, user);
+    return user;
+  }
   async getOrFetchUser(id) {
     const user = this.cache.get(id) || new User(id, this);
+    user.type = "fluxer";
     console.log("fetching");
     const data = await this.platform.cacheExtraneous({
       type: "user",

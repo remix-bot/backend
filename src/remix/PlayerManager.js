@@ -20,33 +20,48 @@ export class PlayerManager {
   }
 
   async initChannels() {
-    /** @type {SerialisedPlayer[]} */
-    const data = await this.redis.request({
-      type: "fetchPlayers"
-    }, this.platform.identifier);
-    data.forEach((p) => {
-      const player = this.deserialisePlayer(p);
-      this.playerMap.set(p.channel.id, player);
-      this.platform.users.onPlayerInit(player.users, player);
-    });
+    try {
+      /** @type {SerialisedPlayer[]} */
+      const data = await this.redis.request({
+        type: "fetchPlayers"
+      }, this.platform.identifier);
+      if (Array.isArray(data)) {
+        data.forEach((p) => {
+          if (!p?.channel?.id) return;
+          const player = this.deserialisePlayer(p);
+          this.playerMap.set(p.channel.id, player);
+          this.platform.users.onPlayerInit(player.users || [], player);
+        });
+      }
+    } catch (err) {
+      console.warn(`[PlayerManager] Error initializing players for ${this.platform.identifier}:`, err?.message);
+    }
     console.log(this.platform.identifier, this.playerMap);
 
     const managerEvent = (m) => {
-      const data = JSON.parse(m);
-      const type = data.type;
-      /** @type {SerialisedPlayer} */
-      const player = data.player;
+      try {
+        const data = JSON.parse(m);
+        const type = data.type;
+        /** @type {SerialisedPlayer} */
+        const player = data.player;
+        if (!player?.channel?.id) return;
 
-      if (type === "init") {
-        const p = this.deserialisePlayer(player);
-        this.playerMap.set(p.channel.id, p);
-        this.platform.users.onPlayerInit(p.users, p);
-        return;
-      } else if (type === "close") {
-        const id = player.channel.id;
-        this.platform.users.onPlayerClose(this.get(id).users, this.get(id));
-        this.get(id).close();
-        this.playerMap.delete(id);
+        if (type === "init") {
+          const p = this.deserialisePlayer(player);
+          this.playerMap.set(p.channel.id, p);
+          this.platform.users.onPlayerInit(p.users || [], p);
+          return;
+        } else if (type === "close") {
+          const id = player.channel.id;
+          const existing = this.get(id);
+          if (existing) {
+            this.platform.users.onPlayerClose(existing.users || [], existing);
+            existing.close();
+            this.playerMap.delete(id);
+          }
+        }
+      } catch (err) {
+        console.warn(`[PlayerManager] Error handling manager event:`, err?.message);
       }
     }
     await this.redis.subscribe(this.platform.channelPrefix + "players", managerEvent);
@@ -230,12 +245,21 @@ export class Player extends EventEmitter {
           this.queue.update(data);
           break;
         case "join":
-          this.users.push(data);
+          if (data) {
+            const joinId = typeof data === "string" ? data : (data?.id || data?.user?.id || data);
+            if (!this.users.some(u => (typeof u === "string" ? u : u?.id) === joinId)) {
+              this.users.push(data);
+            }
+          }
           break;
         case "leave":
-          const idx = this.users.findIndex(u => u === data.id);
-          if (idx === -1) break;
-          this.users.splice(idx, 1);
+          if (data) {
+            const targetId = typeof data === "string" ? data : (data?.id || data?.user?.id);
+            const idx = this.users.findIndex(u => (typeof u === "string" ? u : u?.id) === targetId);
+            if (idx !== -1) {
+              this.users.splice(idx, 1);
+            }
+          }
           break;
       }
       this.emit("update");
