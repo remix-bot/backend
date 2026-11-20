@@ -203,7 +203,7 @@ export class FluxerUserManager extends UserManager {
     });
     if (!data || data.error) return user;
     data.avatar = {
-      url: `${this.platform.getAuthManager().fluxerMediaEndpoint}/avatars/${data.id}/${data.avatar}.webp`,
+      url: data.avatar ? `${this.platform.getAuthManager().fluxerMediaEndpoint}/avatars/${data.id}/${data.avatar}.webp` : null,
     };
     data.displayName = data.global_name;
 

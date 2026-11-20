@@ -190,7 +190,7 @@ export class AuthenticationManager {
    * @param {any[]} [channels] If provided, will add also process channel api objects
    */
   normaliseFluxerServer(server, channels) {
-    server.icon = `${this.fluxerMediaEndpoint}/icons/${server.id}/${server.icon}.webp`;
+    server.icon = server.icon ? `${this.fluxerMediaEndpoint}/icons/${server.id}/${server.icon}.webp` : null;
     server.ownerId = server.owner_id;
     if (channels) {
       server.channelIds = channels.map(c => c.id);
@@ -202,7 +202,7 @@ export class AuthenticationManager {
     return server;
   }
   normaliseFluxerChannel(channel) {
-    channel.icon = `${this.fluxerMediaEndpoint}/icons/${channel.id}/${channel.icon}.webp`;
+    channel.icon = channel.icon ? `${this.fluxerMediaEndpoint}/icons/${channel.id}/${channel.icon}.webp` : null;
     channel.isVoice = channel.type === 2;
     return channel;
   }
