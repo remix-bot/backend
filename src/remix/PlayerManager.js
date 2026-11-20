@@ -116,8 +116,8 @@ export class Queue {
    * @param {SerialisedQueue} data
    */
   deserialise(data) {
-    this.current = data.current;
-    this.data = data.data;
+    this.current = data?.current || null;
+    this.data = Array.isArray(data?.data) ? data.data : [];
   }
   /**
    *
@@ -284,8 +284,8 @@ export class Player extends EventEmitter {
       server: redisData.server
     };
     this.queue = new Queue();
-    this.queue.deserialise(redisData.queue);
-    this.users = redisData.users;
+    this.queue.deserialise(redisData.queue || {});
+    this.users = Array.isArray(redisData.users) ? redisData.users : [];
   }
   /**
    * @returns {SerialisedPlayer}

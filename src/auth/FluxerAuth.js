@@ -44,6 +44,9 @@ export class FluxerAuth {
       }));
       // TODO: fetch user initially
       const user = await this.server.auth.getFluxerUserByToken(token.token);
+      if (!user) return res.redirect(this.constructUrl("/error", {
+        m: "Could not fetch Fluxer user profile."
+      }));
       console.log(token);
       await this.server.db.storeFluxerAccessToken(user.id, token)
       req.session.token = token;

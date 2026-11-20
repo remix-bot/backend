@@ -201,7 +201,7 @@ export class FluxerUserManager extends UserManager {
       const auth = this.platform.getAuthManager();
       return await auth.getFluxerUser(data.key);
     });
-    if (data.error) return user;
+    if (!data || data.error) return user;
     data.avatar = {
       url: `${this.platform.getAuthManager().fluxerMediaEndpoint}/avatars/${data.id}/${data.avatar}.webp`,
     };

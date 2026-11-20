@@ -15,6 +15,7 @@ export class DatabaseManager {
       connectionLimit: 15,
       ...config
     });
+    this.expiryTime = 15 * 60 * 1000;
 
     this.init();
   }
@@ -128,7 +129,7 @@ export class DatabaseManager {
         valid: false
       };
       if (!(await this.compareHash(token, res[0].token))) return {
-        vaid: false
+        valid: false
       };
 
       return {
@@ -190,6 +191,7 @@ export class DatabaseManager {
       return {
         token: res[0].token,
         refresh: res[0].refresh,
+        refreshToken: res[0].refresh,
         expiry: res[0].expires * 1000
       };
     } catch (e) {

@@ -104,11 +104,14 @@ export class Socket extends EventEmitter {
       console.log("Message for user: ", m);
     });*/
     const user = await this.platform.users.getOrFetchUser(this.user);
+    const playerListeners = [];
+
     const joinListener = (channel) => {
       console.log("joining");
       const player = this.platform.players.get(channel);
-      this.subscribePlayer(player);
       if (!player) return console.warn("User " + this.user + " joined channel " + channel + " with unknown player");
+      const listener = this.subscribePlayer(player);
+      playerListeners.push({ player, listener });
       this.socket.send(JSON.stringify({
         op: OP[1],
         data: {
@@ -118,6 +121,11 @@ export class Socket extends EventEmitter {
       }));
     };
     const leaveListener = (channel) => {
+      const idx = playerListeners.findIndex(p => p?.player?.channelId === channel || p?.player?.channel?.id === channel);
+      if (idx !== -1) {
+        const item = playerListeners.splice(idx, 1)[0];
+        if (item?.player && item?.listener) item.player.off("update", item.listener);
+      }
       this.socket.send(JSON.stringify({
         op: OP[1],
         data: {
@@ -129,18 +137,20 @@ export class Socket extends EventEmitter {
     user.on("join", joinListener);
     user.on("leave", leaveListener);
 
-    const playerListeners = user.connectedTo.map((cid) => {
+    user.connectedTo.forEach((cid) => {
       const player = this.platform.players.get(cid);
       if (!player) return console.warn("unknown player " + cid + " requested by " + user.id);
-      return { player, listener: this.subscribePlayer(player)};
+      playerListeners.push({ player, listener: this.subscribePlayer(player) });
     });
 
     this.onClose = () => {
       user.off("join", joinListener);
       user.off("leave", leaveListener);
       playerListeners.forEach((p) => {
-        p.player.off("update", p.listener);
-      })
+        if (p?.player && p?.listener) {
+          p.player.off("update", p.listener);
+        }
+      });
     }
 
     //this.handler.socket
@@ -199,12 +209,12 @@ export class Socket extends EventEmitter {
 
         const res = await this.db.verifyAPIToken(token, id);
         if (!res.valid) {
-          if (!this.closeTimeout) clearTimeout(this.closeTimeout);
+          if (this.closeTimeout) clearTimeout(this.closeTimeout);
           this.socket.close(3000, "Invalid authentication.");
           return;
         }
         if (res.platform?.toLowerCase() !== this.platform.identifier?.toLowerCase()) {
-          if (!this.closeTimeout) clearTimeout(this.closeTimeout);
+          if (this.closeTimeout) clearTimeout(this.closeTimeout);
           this.socket.close(3000, "API-key-bound platform mismatches endpoint.");
           return;
         }

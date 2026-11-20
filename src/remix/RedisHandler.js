@@ -168,13 +168,15 @@ export class RedisHandler extends EventEmitter {
       }
       var timeout;
       const subscriber = async (m) => {
-        const d = JSON.parse(m);
-        if (d.id != id) return;
-        clearTimeout(timeout); // timeout should be set by now, if not errors will show me what to fix
-        await this.subscriber.unsubscribe("response", subscriber);
-        res(d.content);
+        try {
+          const d = JSON.parse(m);
+          if (d.id != id) return;
+          clearTimeout(timeout);
+          await this.subscriber.unsubscribe("response", subscriber);
+          res(d.content);
+        } catch (_) {}
       }
-      await this.subscriber.subscribe("response", subscriber.bind(this));
+      await this.subscriber.subscribe("response", subscriber);
 
       await this.client.publish("request", JSON.stringify(payload));
 
@@ -322,7 +324,7 @@ export class Platform {
   }
   /** @type {boolean} */
   get connected() {
-    return this.#fail;
+    return this.#fail();
   }
   /**
    * @param {string} type
